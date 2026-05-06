@@ -1,5 +1,7 @@
 // app/api/rooms/route.ts
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { getAllRooms, createRoom } from "@/lib/services/room.service";
 
 export async function GET() {

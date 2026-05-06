@@ -2,6 +2,8 @@
 // Endpoint para generar la ficha de viajero (parte de hospedería)
 
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { generateTravelerRecordXML } from "@/lib/utils/traveler-record";
 
 export async function GET(

@@ -1,5 +1,7 @@
 // app/api/rooms/availability/route.ts
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { getAvailableRooms } from "@/lib/services/room.service";
 
 export async function GET(request: NextRequest) {

@@ -1,5 +1,7 @@
 // app/api/invoices/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import {
   getInvoiceById,
   markInvoiceAsPaid,

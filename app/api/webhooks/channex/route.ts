@@ -2,15 +2,10 @@
 // ============================================================
 // WEBHOOK - Channel Manager (Channex.io)
 // ============================================================
-// Este endpoint recibe reservas externas desde Channex.io
-// y las sincroniza con el PMS local.
-//
-// En producción:
-// 1. Verificar la firma HMAC del webhook (X-Channex-Signature)
-// 2. Responder 200 inmediatamente y procesar en background
-// 3. Implementar reintentos con idempotencia (externalId)
 
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { ChannexWebhookPayload } from "@/lib/types";
 import { BookingStatus, BookingSource } from "@prisma/client";

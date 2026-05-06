@@ -1,5 +1,7 @@
 // app/api/bookings/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import {
   getBookingById,
   updateBooking,

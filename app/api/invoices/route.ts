@@ -1,5 +1,7 @@
 // app/api/invoices/route.ts
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { createInvoice, getAllInvoices } from "@/lib/services/invoice.service";
 
 export async function GET() {
