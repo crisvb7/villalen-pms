@@ -1,0 +1,119 @@
+// prisma/schema.prisma
+// PMS - Sistema de Gestión Hotelera para Casa de Aldea
+// =====================================================
+// AVISO DE SEGURIDAD (PCI-DSS):
+// Este schema NO contiene ningún campo para almacenar datos de tarjetas de crédito
+// (PAN, fecha de caducidad, CVC). Los pagos se gestionan externamente
+// mediante TPV físico y transferencias bancarias.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── HABITACIONES ────────────────────────────────────────────────────────────
+model Room {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  capacity    Int
+  basePrice   Decimal  @db.Decimal(10, 2)
+  isClean     Boolean  @default(true)
+  amenities   String[] @default([])
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@map("rooms")
+}
+
+// ─── HUÉSPEDES ────────────────────────────────────────────────────────────────
+model Guest {
+  id         String   @id @default(cuid())
+  firstName  String
+  lastName   String
+  documentId String   // DNI / NIE / Pasaporte — NUNCA datos bancarios
+  email      String
+  phone      String?
+  nationality String? @default("ES")
+  birthDate  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@map("guests")
+}
+
+// ─── RESERVAS ─────────────────────────────────────────────────────────────────
+model Booking {
+  id           String        @id @default(cuid())
+  guestId      String
+  roomId       String
+  checkInDate  DateTime      @db.Date
+  checkOutDate DateTime      @db.Date
+  totalAmount  Decimal       @db.Decimal(10, 2)
+  status       BookingStatus @default(PENDING)
+  source       BookingSource @default(WEB)
+  depositPaid  Boolean       @default(false)
+  notes        String?
+  adults       Int           @default(1)
+  children     Int           @default(0)
+
+  // Datos del Channel Manager externo (si aplica)
+  externalId   String?       @unique // ID desde Channex u otro Channel Manager
+  channelRef   String?       // Referencia del canal
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  guest    Guest     @relation(fields: [guestId], references: [id])
+  room     Room      @relation(fields: [roomId], references: [id])
+  invoices Invoice[]
+
+  @@map("bookings")
+}
+
+// ─── FACTURAS ─────────────────────────────────────────────────────────────────
+model Invoice {
+  id        String   @id @default(cuid())
+  bookingId String
+  issueDate DateTime @default(now())
+  total     Decimal  @db.Decimal(10, 2)
+  tax       Decimal  @db.Decimal(10, 2) // IVA (21% por defecto para alojamiento rural)
+  subtotal  Decimal  @db.Decimal(10, 2)
+  pdfUrl    String?  // URL al PDF generado (almacenado externamente)
+  invoiceNumber String @unique // Número de factura correlativo
+  isPaid    Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("invoices")
+}
+
+// ─── ENUMERACIONES ────────────────────────────────────────────────────────────
+enum BookingStatus {
+  PENDING    // Reserva creada, pendiente de confirmación/pago
+  CONFIRMED  // Confirmada y con depósito/pago recibido
+  CANCELLED  // Cancelada
+  CHECKED_IN  // Huésped en el establecimiento
+  CHECKED_OUT // Huésped ha salido
+}
+
+enum BookingSource {
+  WEB      // Motor de reservas propio
+  BOOKING  // Booking.com (via Channel Manager)
+  AIRBNB   // Airbnb (via Channel Manager)
+  MANUAL   // Entrada manual por staff
+  CHANNEX  // Cualquier canal via Channex
+  PHONE    // Reserva por teléfono
+}
