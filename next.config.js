@@ -4,7 +4,10 @@ const nextConfig = {
     // Prisma necesita estar en la lista de paquetes externos del servidor
     // para que Vercel no intente empaquetarlo como código de cliente
     // (en Next 14.1 esta opción todavía va dentro de "experimental").
-    serverComponentsExternalPackages: ["@prisma/client", "prisma"],
+    // @react-pdf/renderer también: si webpack lo empaqueta junto al resto del
+    // código de servidor, su reconciler interno rompe con
+    // "a.Component is not a constructor" (bug conocido de bundling).
+    serverComponentsExternalPackages: ["@prisma/client", "prisma", "@react-pdf/renderer"],
     serverActions: {
       allowedOrigins: ["localhost:3000"],
     },
