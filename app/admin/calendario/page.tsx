@@ -1,7 +1,7 @@
 // app/admin/calendario/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import {
   format,
   startOfMonth,
@@ -9,11 +9,14 @@ import {
   eachDayOfInterval,
   isToday,
   isWeekend,
+  isSameDay,
   parseISO,
   isBefore,
   startOfDay,
+  addDays,
   addMonths,
   subMonths,
+  differenceInDays,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -34,6 +37,12 @@ interface Room {
   capacity: number;
 }
 
+interface QuickCreateTarget {
+  roomId: string;
+  roomName: string;
+  date: Date;
+}
+
 const STATUS_BG: Record<string, string> = {
   PENDING: "bg-amber-100 border-amber-300 text-amber-900",
   CONFIRMED: "bg-emerald-100 border-emerald-300 text-emerald-900",
@@ -41,22 +50,51 @@ const STATUS_BG: Record<string, string> = {
   CHECKED_OUT: "bg-stone-100 border-stone-300 text-stone-500",
 };
 
+const EMPTY_FORM = {
+  firstName: "",
+  lastName: "",
+  documentId: "",
+  email: "",
+  phone: "",
+  adults: 1,
+  children: 0,
+};
+
 export default function CalendarioPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [banner, setBanner] = useState<{ type: "error" | "success"; message: string } | null>(null);
 
-  useEffect(() => {
-    Promise.all([
+  const [quickCreate, setQuickCreate] = useState<QuickCreateTarget | null>(null);
+  const [checkInInput, setCheckInInput] = useState("");
+  const [checkOutInput, setCheckOutInput] = useState("");
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const loadData = () => {
+    return Promise.all([
       fetch("/api/bookings").then((r) => r.json()),
       fetch("/api/rooms").then((r) => r.json()),
     ]).then(([bookingsRes, roomsRes]) => {
       setBookings((bookingsRes.data ?? []).filter((b: Booking) => b.status !== "CANCELLED"));
       setRooms(roomsRes.data ?? []);
-      setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    loadData().finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!banner) return;
+    const t = setTimeout(() => setBanner(null), 4000);
+    return () => clearTimeout(t);
+  }, [banner]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -72,6 +110,132 @@ export default function CalendarioPage() {
     });
   };
 
+  // ── Alta rápida (clic en celda libre) ────────────────────────────────────
+
+  const openQuickCreate = (room: Room, day: Date) => {
+    setQuickCreate({ roomId: room.id, roomName: room.name, date: day });
+    setCheckInInput(format(day, "yyyy-MM-dd"));
+    setCheckOutInput(format(addDays(day, 1), "yyyy-MM-dd"));
+    setForm(EMPTY_FORM);
+    setCreateError(null);
+  };
+
+  const closeQuickCreate = () => {
+    setQuickCreate(null);
+    setCreateError(null);
+  };
+
+  const submitQuickCreate = async () => {
+    if (!quickCreate) return;
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.documentId.trim() || !form.email.trim()) {
+      setCreateError("Nombre, apellidos, documento y email son obligatorios.");
+      return;
+    }
+    if (checkOutInput <= checkInInput) {
+      setCreateError("La fecha de salida debe ser posterior a la de entrada.");
+      return;
+    }
+
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId: quickCreate.roomId,
+          checkInDate: checkInInput,
+          checkOutDate: checkOutInput,
+          adults: Number(form.adults) || 1,
+          children: Number(form.children) || 0,
+          source: "MANUAL",
+          guest: {
+            firstName: form.firstName.trim(),
+            lastName: form.lastName.trim(),
+            documentId: form.documentId.trim(),
+            email: form.email.trim(),
+            phone: form.phone.trim() || undefined,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateError(data.error ?? "No se pudo crear la reserva.");
+        return;
+      }
+      closeQuickCreate();
+      await loadData();
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // ── Modo edición: arrastrar y soltar ─────────────────────────────────────
+
+  const handleDragOver = (e: DragEvent<HTMLTableCellElement>, room: Room, day: Date) => {
+    if (!editMode || !draggingId) return;
+    const targetBooking = getBooking(day, room.id);
+    if (targetBooking && targetBooking.id !== draggingId) return; // ocupado por otra reserva: no permitir
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: DragEvent<HTMLTableCellElement>, room: Room, day: Date) => {
+    e.preventDefault();
+    if (!editMode || !draggingId) return;
+    const targetBooking = getBooking(day, room.id);
+    if (targetBooking && targetBooking.id !== draggingId) return;
+
+    const booking = bookings.find((b) => b.id === draggingId);
+    setDraggingId(null);
+    if (!booking) return;
+
+    const nights = differenceInDays(parseISO(booking.checkOutDate), parseISO(booking.checkInDate));
+    const newCheckIn = day;
+    const newCheckOut = addDays(day, nights);
+
+    if (room.id === booking.roomId && isSameDay(newCheckIn, parseISO(booking.checkInDate))) {
+      return; // soltada en el mismo sitio
+    }
+
+    const previousBookings = bookings;
+    setBookings((bs) =>
+      bs.map((b) =>
+        b.id === booking.id
+          ? {
+              ...b,
+              roomId: room.id,
+              room: { ...b.room, name: room.name },
+              checkInDate: newCheckIn.toISOString(),
+              checkOutDate: newCheckOut.toISOString(),
+            }
+          : b
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/bookings/${booking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId: room.id,
+          checkInDate: format(newCheckIn, "yyyy-MM-dd"),
+          checkOutDate: format(newCheckOut, "yyyy-MM-dd"),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBookings(previousBookings);
+        setBanner({ type: "error", message: data.error ?? "No se pudo mover la reserva." });
+        return;
+      }
+      setBanner({ type: "success", message: `Reserva movida a ${room.name}, ${format(newCheckIn, "d 'de' MMMM", { locale: es })}.` });
+      await loadData();
+    } catch {
+      setBookings(previousBookings);
+      setBanner({ type: "error", message: "No se pudo mover la reserva." });
+    }
+  };
+
   return (
     <div>
       {/* Header */}
@@ -79,7 +243,9 @@ export default function CalendarioPage() {
         <div>
           <h1 className="font-serif text-3xl text-stone-800">Calendario</h1>
           <p className="text-sm text-stone-500 mt-1">
-            Ocupación por habitación y día
+            {editMode
+              ? "Arrastra una reserva a otra fecha u habitación libre para moverla."
+              : "Clica en un día libre para crear una reserva."}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -104,6 +270,17 @@ export default function CalendarioPage() {
           >
             Hoy
           </button>
+          <button
+            onClick={() => setEditMode((v) => !v)}
+            className={cn(
+              "text-xs px-3 py-2 border font-medium transition-colors",
+              editMode
+                ? "bg-stone-900 text-white border-stone-900"
+                : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+            )}
+          >
+            {editMode ? "✓ Terminar edición" : "✏️ Editar"}
+          </button>
         </div>
       </div>
 
@@ -122,6 +299,19 @@ export default function CalendarioPage() {
           </div>
         ))}
       </div>
+
+      {banner && (
+        <div
+          className={cn(
+            "mb-4 px-4 py-2 text-sm border",
+            banner.type === "error"
+              ? "bg-red-50 text-red-700 border-red-200"
+              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+          )}
+        >
+          {banner.message}
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         {loading ? (
@@ -168,20 +358,36 @@ export default function CalendarioPage() {
                     {days.map((day) => {
                       const booking = getBooking(day, room.id);
                       const today = isToday(day);
+                      const isDragTarget = editMode && draggingId && (!booking || booking.id === draggingId);
                       return (
                         <td
                           key={day.toISOString()}
+                          onDragOver={(e) => handleDragOver(e, room, day)}
+                          onDrop={(e) => handleDrop(e, room, day)}
+                          onClick={() => {
+                            if (!booking) openQuickCreate(room, day);
+                          }}
                           className={cn(
                             "border-b border-r border-stone-50 p-0.5 text-center",
+                            !booking && "cursor-pointer hover:bg-emerald-50/60",
                             !booking && isWeekend(day) && "bg-stone-50/60",
-                            !booking && today && "bg-amber-50/60"
+                            !booking && today && "bg-amber-50/60",
+                            isDragTarget && !booking && "bg-emerald-50 outline outline-1 outline-emerald-300"
                           )}
                         >
                           {booking ? (
                             <div
+                              draggable={editMode}
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData("text/plain", booking.id);
+                                setDraggingId(booking.id);
+                              }}
+                              onDragEnd={() => setDraggingId(null)}
                               className={cn(
                                 "h-6 border text-[9px] leading-6 truncate",
-                                STATUS_BG[booking.status] ?? "bg-stone-100 border-stone-300"
+                                STATUS_BG[booking.status] ?? "bg-stone-100 border-stone-300",
+                                editMode && "cursor-grab active:cursor-grabbing",
+                                draggingId === booking.id && "opacity-40"
                               )}
                               title={`${booking.guest.firstName} ${booking.guest.lastName} — ${format(
                                 parseISO(booking.checkInDate),
@@ -203,6 +409,125 @@ export default function CalendarioPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de alta rápida */}
+      {quickCreate && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md p-6 shadow-lg">
+            <div className="mb-4">
+              <p className="text-xs uppercase tracking-widest text-stone-400 mb-1">Nueva reserva</p>
+              <h3 className="font-serif text-xl text-stone-800">{quickCreate.roomName}</h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">Check-in</label>
+                <input
+                  type="date"
+                  className="input w-full text-sm"
+                  value={checkInInput}
+                  onChange={(e) => setCheckInInput(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Check-out</label>
+                <input
+                  type="date"
+                  className="input w-full text-sm"
+                  value={checkOutInput}
+                  onChange={(e) => setCheckOutInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={form.firstName}
+                  onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Apellidos *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={form.lastName}
+                  onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">Documento *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={form.documentId}
+                  onChange={(e) => setForm((f) => ({ ...f, documentId: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Teléfono</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={form.phone}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="label mb-1">Email *</label>
+              <input
+                type="email"
+                className="input w-full text-sm"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="label mb-1">Adultos</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="input w-full text-sm"
+                  value={form.adults}
+                  onChange={(e) => setForm((f) => ({ ...f, adults: Number(e.target.value) }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Niños</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="input w-full text-sm"
+                  value={form.children}
+                  onChange={(e) => setForm((f) => ({ ...f, children: Number(e.target.value) }))}
+                />
+              </div>
+            </div>
+
+            {createError && <p className="text-xs text-red-600 mb-3">{createError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <button onClick={closeQuickCreate} className="btn-ghost text-sm" disabled={creating}>
+                Cancelar
+              </button>
+              <button onClick={submitQuickCreate} className="btn-primary text-sm" disabled={creating}>
+                {creating ? "Creando…" : "Crear reserva"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -127,7 +127,10 @@ export async function createBooking(input: CreateBookingInput) {
 
   // Si el huésped ya guardó una tarjeta (Stripe) al reservar, la reserva
   // queda confirmada de inmediato en vez de esperar transferencia bancaria.
+  // Igual si la da de alta el personal a mano desde el panel (MANUAL): ya
+  // saben que es real, no tiene sentido el paso extra de confirmarla después.
   const hasStripeCard = Boolean(input.stripeCustomerId && input.stripePaymentMethodId);
+  const isManualStaffEntry = input.source === BookingSource.MANUAL;
 
   // Crear la reserva
   const booking = await prisma.booking.create({
@@ -137,7 +140,10 @@ export async function createBooking(input: CreateBookingInput) {
       checkInDate: checkIn,
       checkOutDate: checkOut,
       totalAmount,
-      status: hasStripeCard ? BookingStatus.CONFIRMED : BookingStatus.PENDING,
+      status:
+        hasStripeCard || isManualStaffEntry
+          ? BookingStatus.CONFIRMED
+          : BookingStatus.PENDING,
       source: input.source ?? BookingSource.WEB,
       depositPaid: false,
       adults: input.adults,
@@ -151,16 +157,17 @@ export async function createBooking(input: CreateBookingInput) {
 
   await pushAvailabilityAndRates(booking.roomId, checkIn, checkOut);
 
+  const isConfirmed = hasStripeCard || isManualStaffEntry;
   await sendEmail({
     to: booking.guest.email,
-    subject: hasStripeCard ? "Tu reserva está confirmada" : "Hemos recibido tu solicitud de reserva",
+    subject: isConfirmed ? "Tu reserva está confirmada" : "Hemos recibido tu solicitud de reserva",
     react: BookingConfirmationEmail({
       guestFirstName: booking.guest.firstName,
       roomName: booking.room.name,
       checkInDate: formatDateLong(booking.checkInDate),
       checkOutDate: formatDateLong(booking.checkOutDate),
       totalAmount: formatCurrency(booking.totalAmount.toString()),
-      status: hasStripeCard ? "CONFIRMED" : "PENDING",
+      status: isConfirmed ? "CONFIRMED" : "PENDING",
       precheckinUrl: `${process.env.NEXTAUTH_URL ?? ""}/precheckin/${booking.id}`,
       bankIban: process.env.HOTEL_BANK_IBAN,
     }),
@@ -193,6 +200,7 @@ export async function updateBooking(
   data: Partial<{
     checkInDate: Date;
     checkOutDate: Date;
+    roomId: string;
     status: BookingStatus;
     depositPaid: boolean;
     notes: string;
@@ -200,38 +208,72 @@ export async function updateBooking(
     children: number;
   }>
 ) {
-  // Si se cambian fechas, re-verificar disponibilidad
-  const previous = await prisma.booking.findUnique({ where: { id } });
+  const previous = await prisma.booking.findUnique({
+    where: { id },
+    include: { room: true, invoices: { select: { id: true } } },
+  });
   if (!previous) throw new Error("Reserva no encontrada.");
 
-  if (data.checkInDate || data.checkOutDate) {
+  const movesDatesOrRoom = Boolean(data.checkInDate || data.checkOutDate || data.roomId);
+
+  if (movesDatesOrRoom && previous.invoices.length > 0) {
+    throw new Error(
+      "Esta reserva ya tiene una factura asociada; no se pueden cambiar sus fechas o su habitación."
+    );
+  }
+
+  let recomputedTotal: number | undefined;
+
+  if (movesDatesOrRoom) {
     const checkIn = data.checkInDate ?? previous.checkInDate;
     const checkOut = data.checkOutDate ?? previous.checkOutDate;
+    const targetRoomId = data.roomId ?? previous.roomId;
 
-    const isAvailable = await checkAvailability(
-      previous.roomId,
-      checkIn,
-      checkOut,
-      id // excluir la reserva actual del check
-    );
+    if (checkIn >= checkOut) {
+      throw new Error("La fecha de salida debe ser posterior a la de entrada.");
+    }
+
+    // Re-verificar disponibilidad contra la habitación DESTINO (puede ser
+    // distinta de la actual si se arrastra a otra columna del calendario).
+    const isAvailable = await checkAvailability(targetRoomId, checkIn, checkOut, id);
     if (!isAvailable) {
       throw new Error(
-        "Las nuevas fechas generan un conflicto con otra reserva existente."
+        "Las nuevas fechas u habitación generan un conflicto con otra reserva existente."
       );
     }
+
+    const room = data.roomId
+      ? await prisma.room.findUnique({ where: { id: data.roomId } })
+      : previous.room;
+    if (!room) throw new Error("Habitación no encontrada.");
+
+    const nights = differenceInDays(checkOut, checkIn);
+    recomputedTotal = parseFloat((parseFloat(room.basePrice.toString()) * nights).toFixed(2));
   }
 
   const updated = await prisma.booking.update({
     where: { id },
-    data,
+    data: {
+      ...data,
+      ...(recomputedTotal !== undefined ? { totalAmount: recomputedTotal } : {}),
+    },
     include: { guest: true, room: true },
   });
 
-  // Sincronizar el rango que cubre tanto las fechas antiguas como las nuevas
-  // (por si la reserva se movió, hay que liberar/ocupar ambos tramos).
-  const syncFrom = previous.checkInDate < updated.checkInDate ? previous.checkInDate : updated.checkInDate;
-  const syncTo = previous.checkOutDate > updated.checkOutDate ? previous.checkOutDate : updated.checkOutDate;
-  await pushAvailabilityAndRates(updated.roomId, syncFrom, syncTo);
+  const roomChanged = Boolean(data.roomId && data.roomId !== previous.roomId);
+  if (roomChanged) {
+    // Habitación distinta: liberar el rango antiguo en la de origen y
+    // ocupar el nuevo rango en la de destino (son dos habitaciones a la vez
+    // en Channex, no se puede resolver con una sola sincronización).
+    await pushAvailabilityAndRates(previous.roomId, previous.checkInDate, previous.checkOutDate);
+    await pushAvailabilityAndRates(updated.roomId, updated.checkInDate, updated.checkOutDate);
+  } else {
+    // Misma habitación: sincronizar el rango que cubre tanto las fechas
+    // antiguas como las nuevas, por si solo se movió de fecha.
+    const syncFrom = previous.checkInDate < updated.checkInDate ? previous.checkInDate : updated.checkInDate;
+    const syncTo = previous.checkOutDate > updated.checkOutDate ? previous.checkOutDate : updated.checkOutDate;
+    await pushAvailabilityAndRates(updated.roomId, syncFrom, syncTo);
+  }
 
   return updated;
 }

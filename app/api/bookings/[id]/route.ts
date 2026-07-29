@@ -55,6 +55,7 @@ export async function PATCH(
       notes: body.notes,
       adults: body.adults ? Number(body.adults) : undefined,
       children: body.children !== undefined ? Number(body.children) : undefined,
+      roomId: body.roomId,
       checkInDate: body.checkInDate ? new Date(body.checkInDate) : undefined,
       checkOutDate: body.checkOutDate
         ? new Date(body.checkOutDate)
