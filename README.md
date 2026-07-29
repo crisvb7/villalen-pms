@@ -70,6 +70,13 @@ npm run dev
 
 La aplicación estará disponible en **http://localhost:3000**
 
+> ⚠️ **Zona horaria**: los scripts `dev`/`build`/`start` fuerzan `TZ=UTC` (vía
+> `cross-env`) porque las fechas de entrada/salida se guardan como fecha sin
+> hora (`@db.Date`) — si el proceso corre en una zona horaria por delante de
+> UTC (como España), se cuela un desfase de un día. **En Vercel, añade
+> `TZ=UTC` como variable de entorno del proyecto** (`vercel-build` no lleva
+> `cross-env` porque las build machines de Vercel son Linux).
+
 ---
 
 ## 🗺️ Estructura de páginas
