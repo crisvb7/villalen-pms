@@ -31,7 +31,7 @@ export async function GET(
         subtotal: quote.subtotal.toString(),
         tax: quote.tax.toString(),
         total: quote.total.toString(),
-        client: { name: quote.guestName, email: quote.guestEmail },
+        client: { name: quote.guestName, email: quote.guestEmail, phone: quote.guestPhone },
         roomName: quote.roomName,
         pricePerNight: quote.pricePerNight.toString(),
         checkInDate: quote.checkInDate,

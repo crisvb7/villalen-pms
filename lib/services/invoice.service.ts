@@ -89,6 +89,7 @@ export async function getInvoiceById(id: string) {
       booking: {
         include: { guest: true, room: true },
       },
+      extras: { orderBy: { createdAt: "asc" } },
     },
   });
 }
@@ -97,9 +98,75 @@ export async function getAllInvoices() {
   return prisma.invoice.findMany({
     include: {
       booking: { include: { guest: true, room: true } },
+      extras: { orderBy: { createdAt: "asc" } },
     },
     orderBy: { createdAt: "desc" },
   });
+}
+
+/**
+ * Recalcula subtotal/tax/total de la factura a partir del importe de la
+ * reserva más todos sus servicios adicionales (mismo tipo de IVA para todo,
+ * ver IVA_RATE).
+ */
+async function recalculateInvoiceTotals(invoiceId: string) {
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { booking: true, extras: true },
+  });
+  if (!invoice) throw new Error("Factura no encontrada.");
+
+  const accommodationGross = parseFloat(invoice.booking.totalAmount.toString());
+  const extrasGross = invoice.extras.reduce(
+    (sum, e) => sum + parseFloat(e.amount.toString()),
+    0
+  );
+  const totalGross = accommodationGross + extrasGross;
+  const subtotal = parseFloat((totalGross / (1 + IVA_RATE)).toFixed(2));
+  const tax = parseFloat((totalGross - subtotal).toFixed(2));
+
+  return prisma.invoice.update({
+    where: { id: invoiceId },
+    data: { subtotal, tax, total: totalGross },
+    include: { booking: { include: { guest: true, room: true } }, extras: { orderBy: { createdAt: "asc" } } },
+  });
+}
+
+export async function addInvoiceExtra(
+  invoiceId: string,
+  input: { description: string; amount: number }
+) {
+  const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+  if (!invoice) throw new Error("Factura no encontrada.");
+  if (invoice.isPaid) {
+    throw new Error("No se pueden añadir servicios a una factura ya pagada.");
+  }
+  if (!input.description.trim() || !(input.amount > 0)) {
+    throw new Error("El servicio necesita una descripción y un importe mayor que 0.");
+  }
+
+  await prisma.invoiceExtra.create({
+    data: { invoiceId, description: input.description.trim(), amount: input.amount },
+  });
+
+  return recalculateInvoiceTotals(invoiceId);
+}
+
+export async function removeInvoiceExtra(invoiceId: string, extraId: string) {
+  const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+  if (!invoice) throw new Error("Factura no encontrada.");
+  if (invoice.isPaid) {
+    throw new Error("No se pueden quitar servicios de una factura ya pagada.");
+  }
+
+  const extra = await prisma.invoiceExtra.findUnique({ where: { id: extraId } });
+  if (!extra || extra.invoiceId !== invoiceId) {
+    throw new Error("Servicio no encontrado en esta factura.");
+  }
+
+  await prisma.invoiceExtra.delete({ where: { id: extraId } });
+
+  return recalculateInvoiceTotals(invoiceId);
 }
 
 /**
@@ -115,12 +182,14 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
     1,
     Math.round((booking.checkOutDate.getTime() - booking.checkInDate.getTime()) / 86_400_000)
   );
-  const pricePerNight = (parseFloat(invoice.total.toString()) / nights).toFixed(2);
+  const accommodationTotal = parseFloat(booking.totalAmount.toString());
+  const pricePerNight = (accommodationTotal / nights).toFixed(2);
 
   return renderPdfBuffer(
     InvoiceDocument({
       documentTitle: "FACTURA",
       documentNumber: invoice.invoiceNumber,
+      bookingRef: booking.id,
       issueDate: invoice.issueDate,
       subtotal: invoice.subtotal.toString(),
       tax: invoice.tax.toString(),
@@ -129,11 +198,20 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
         name: `${booking.guest.firstName} ${booking.guest.lastName}`,
         documentId: booking.guest.documentId,
         email: booking.guest.email,
+        phone: booking.guest.phone,
       },
       roomName: booking.room.name,
+      adults: booking.adults,
+      children: booking.children,
       pricePerNight,
+      accommodationTotal: accommodationTotal.toFixed(2),
       checkInDate: booking.checkInDate,
       checkOutDate: booking.checkOutDate,
+      extras: invoice.extras.map((e) => ({
+        description: e.description,
+        amount: e.amount.toString(),
+        date: e.createdAt,
+      })),
       isPaid: invoice.isPaid,
     })
   );

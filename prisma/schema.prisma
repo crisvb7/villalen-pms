@@ -107,8 +107,8 @@ model Invoice {
   id        String   @id @default(cuid())
   bookingId String
   issueDate DateTime @default(now())
-  total     Decimal  @db.Decimal(10, 2)
-  tax       Decimal  @db.Decimal(10, 2) // IVA (21% por defecto para alojamiento rural)
+  total     Decimal  @db.Decimal(10, 2) // Alojamiento + servicios adicionales
+  tax       Decimal  @db.Decimal(10, 2) // IVA (10%, tipo reducido de hostelería)
   subtotal  Decimal  @db.Decimal(10, 2)
   pdfUrl    String?  // URL al PDF generado (almacenado externamente)
   invoiceNumber String @unique // Número de factura correlativo
@@ -117,9 +117,24 @@ model Invoice {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  booking Booking @relation(fields: [bookingId], references: [id])
+  booking Booking        @relation(fields: [bookingId], references: [id])
+  extras  InvoiceExtra[]
 
   @@map("invoices")
+}
+
+// Servicios adicionales facturados junto al alojamiento (desayuno, etc.).
+model InvoiceExtra {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  amount      Decimal  @db.Decimal(10, 2) // Importe con IVA incluido, igual que el total de la reserva
+
+  createdAt DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_extras")
 }
 
 // ─── GASTOS ───────────────────────────────────────────────────────────────────

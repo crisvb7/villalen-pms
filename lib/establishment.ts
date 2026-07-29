@@ -11,4 +11,6 @@ export const ESTABLISHMENT = {
   registrationNumber: "VUT-AS-XXXXX", // Número de registro turístico (completar)
   phone: process.env.HOTEL_PHONE ?? "",
   email: process.env.HOTEL_EMAIL ?? "",
+  checkInTime: "15:00",
+  checkOutTime: "12:00",
 };
