@@ -130,73 +130,74 @@ export default function CalendarioPage() {
           <div className="p-12 text-center text-stone-400">No hay habitaciones configuradas.</div>
         ) : (
           <div className="overflow-auto max-h-[75vh]">
-            <table className="w-full text-sm border-collapse">
+            <table className="border-collapse">
               <thead>
                 <tr>
-                  <th className="sticky top-0 left-0 z-20 bg-stone-50 border-b border-r border-stone-100 px-3 py-3 text-left text-xs uppercase tracking-wider text-stone-400 font-medium min-w-[110px]">
-                    Fecha
+                  <th className="sticky top-0 left-0 z-20 bg-stone-50 border-b border-r border-stone-100 px-3 py-3 text-left text-xs uppercase tracking-wider text-stone-400 font-medium min-w-[150px] w-[150px]">
+                    Habitación
                   </th>
-                  {rooms.map((room) => (
-                    <th
-                      key={room.id}
-                      className="sticky top-0 z-10 bg-stone-50 border-b border-stone-100 px-3 py-3 text-center text-xs uppercase tracking-wider text-stone-500 font-medium min-w-[130px]"
-                    >
-                      {room.name}
-                      <span className="block normal-case text-[10px] text-stone-400 font-normal mt-0.5">
-                        {room.capacity} pers.
-                      </span>
-                    </th>
-                  ))}
+                  {days.map((day) => {
+                    const today = isToday(day);
+                    return (
+                      <th
+                        key={day.toISOString()}
+                        className={cn(
+                          "sticky top-0 z-10 border-b border-stone-100 py-2 text-center text-xs font-medium w-[34px] min-w-[34px]",
+                          isWeekend(day) ? "bg-stone-100" : "bg-stone-50",
+                          today && "bg-amber-100"
+                        )}
+                      >
+                        <span className={cn("block text-[9px] uppercase text-stone-400")}>
+                          {format(day, "EEEEE", { locale: es })}
+                        </span>
+                        <span className={cn(today ? "font-semibold text-stone-900" : "text-stone-600")}>
+                          {format(day, "d")}
+                        </span>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {days.map((day) => {
-                  const today = isToday(day);
-                  return (
-                    <tr
-                      key={day.toISOString()}
-                      className={cn(isWeekend(day) && "bg-stone-50/40")}
-                    >
-                      <td
-                        className={cn(
-                          "sticky left-0 z-10 border-b border-r border-stone-100 px-3 py-2 bg-white",
-                          isWeekend(day) && "bg-stone-50/40",
-                          today && "bg-amber-50"
-                        )}
-                      >
-                        <span className={cn("text-sm", today ? "font-semibold text-stone-900" : "text-stone-600")}>
-                          {format(day, "EEE d 'de' MMM", { locale: es })}
-                        </span>
-                      </td>
-                      {rooms.map((room) => {
-                        const booking = getBooking(day, room.id);
-                        return (
-                          <td
-                            key={room.id}
-                            className="border-b border-r border-stone-50 p-1 align-top"
-                          >
-                            {booking ? (
-                              <div
-                                className={cn(
-                                  "text-xs px-2 py-1.5 border truncate",
-                                  STATUS_BG[booking.status] ?? "bg-stone-100 border-stone-300"
-                                )}
-                                title={`${booking.guest.firstName} ${booking.guest.lastName} — ${format(
-                                  parseISO(booking.checkInDate),
-                                  "dd/MM"
-                                )} → ${format(parseISO(booking.checkOutDate), "dd/MM")}`}
-                              >
-                                {booking.guest.firstName} {booking.guest.lastName.charAt(0)}.
-                              </div>
-                            ) : (
-                              <div className="text-xs px-2 py-1.5 text-stone-300 text-center">·</div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
+                {rooms.map((room) => (
+                  <tr key={room.id}>
+                    <td className="sticky left-0 z-10 border-b border-r border-stone-100 px-3 py-2 bg-white min-w-[150px] w-[150px]">
+                      <span className="text-sm text-stone-700">{room.name}</span>
+                      <span className="block text-[10px] text-stone-400 mt-0.5">{room.capacity} pers.</span>
+                    </td>
+                    {days.map((day) => {
+                      const booking = getBooking(day, room.id);
+                      const today = isToday(day);
+                      return (
+                        <td
+                          key={day.toISOString()}
+                          className={cn(
+                            "border-b border-r border-stone-50 p-0.5 text-center",
+                            !booking && isWeekend(day) && "bg-stone-50/60",
+                            !booking && today && "bg-amber-50/60"
+                          )}
+                        >
+                          {booking ? (
+                            <div
+                              className={cn(
+                                "h-6 border text-[9px] leading-6 truncate",
+                                STATUS_BG[booking.status] ?? "bg-stone-100 border-stone-300"
+                              )}
+                              title={`${booking.guest.firstName} ${booking.guest.lastName} — ${format(
+                                parseISO(booking.checkInDate),
+                                "dd/MM"
+                              )} - ${format(parseISO(booking.checkOutDate), "dd/MM")}`}
+                            >
+                              {booking.guest.lastName.charAt(0)}
+                            </div>
+                          ) : (
+                            <div className="h-6" />
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

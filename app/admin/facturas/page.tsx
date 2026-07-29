@@ -172,9 +172,11 @@ export default function FacturasPage() {
                         </a>
                         <button
                           onClick={() => toggleExpanded(invoice.id)}
-                          className="text-xs bg-stone-100 text-stone-600 border border-stone-200 px-2 py-1 hover:bg-stone-200 transition-colors"
+                          className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 hover:bg-amber-100 transition-colors font-medium"
                         >
-                          🍽️ Servicios{invoice.extras.length > 0 ? ` (${invoice.extras.length})` : ""}
+                          {invoice.extras.length > 0
+                            ? `🍽️ Servicios (${invoice.extras.length})`
+                            : "+ Añadir servicio (desayuno, etc.)"}
                         </button>
                         {!invoice.isPaid && (
                           <button
