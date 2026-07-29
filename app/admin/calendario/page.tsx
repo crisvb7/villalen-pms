@@ -292,6 +292,7 @@ export default function CalendarioPage() {
           { label: "En casa", color: "bg-blue-100 border-blue-300" },
           { label: "Finalizada", color: "bg-stone-100 border-stone-300" },
           { label: "Libre", color: "bg-white border-stone-200" },
+          { label: "Hoy", color: "bg-violet-600 border-violet-600" },
         ].map((l) => (
           <div key={l.label} className="flex items-center gap-1.5">
             <div className={`w-3 h-3 rounded-sm border ${l.color}`} />
@@ -332,15 +333,16 @@ export default function CalendarioPage() {
                       <th
                         key={day.toISOString()}
                         className={cn(
-                          "sticky top-0 z-10 border-b border-stone-100 py-2 text-center text-xs font-medium w-[34px] min-w-[34px]",
-                          isWeekend(day) ? "bg-stone-100" : "bg-stone-50",
-                          today && "bg-amber-100"
+                          "sticky top-0 z-10 border-b py-2 text-center text-xs font-medium w-[34px] min-w-[34px]",
+                          today
+                            ? "bg-violet-600 border-violet-600"
+                            : cn("border-stone-100", isWeekend(day) ? "bg-stone-100" : "bg-stone-50")
                         )}
                       >
-                        <span className={cn("block text-[9px] uppercase text-stone-400")}>
+                        <span className={cn("block text-[9px] uppercase", today ? "text-violet-100" : "text-stone-400")}>
                           {format(day, "EEEEE", { locale: es })}
                         </span>
-                        <span className={cn(today ? "font-semibold text-stone-900" : "text-stone-600")}>
+                        <span className={cn("font-semibold", today ? "text-white" : "text-stone-600 font-normal")}>
                           {format(day, "d")}
                         </span>
                       </th>
@@ -368,10 +370,10 @@ export default function CalendarioPage() {
                             if (!booking) openQuickCreate(room, day);
                           }}
                           className={cn(
-                            "border-b border-r border-stone-50 p-0.5 text-center",
+                            "border-b border-r p-0.5 text-center",
+                            today ? "border-l-2 border-r-2 border-l-violet-300 border-r-violet-300 bg-violet-50/50" : "border-stone-50",
                             !booking && "cursor-pointer hover:bg-emerald-50/60",
-                            !booking && isWeekend(day) && "bg-stone-50/60",
-                            !booking && today && "bg-amber-50/60",
+                            !booking && isWeekend(day) && !today && "bg-stone-50/60",
                             isDragTarget && !booking && "bg-emerald-50 outline outline-1 outline-emerald-300"
                           )}
                         >
