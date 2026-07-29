@@ -5,11 +5,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 import { generateTravelerRecordXML } from "@/lib/utils/traveler-record";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const xml = await generateTravelerRecordXML(params.id);
 

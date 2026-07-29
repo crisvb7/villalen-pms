@@ -11,8 +11,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Conexión "pooled" (PgBouncer, puerto 6543 en Supabase) — la usa la app
+  // en tiempo de ejecución, apta para entornos serverless (Vercel).
+  url       = env("DATABASE_URL")
+  // Conexión directa (puerto 5432) — la necesitan `prisma migrate` y
+  // `prisma db push`, el pooler no soporta esas operaciones.
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── HABITACIONES ────────────────────────────────────────────────────────────
@@ -27,6 +32,11 @@ model Room {
   imageUrl    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Mapeo al Channel Manager (Channex) — se rellena tras crear el
+  // room type y el rate plan correspondientes en el dashboard de Channex.
+  channexRoomTypeId String?
+  channexRatePlanId String?
 
   bookings Booking[]
 
@@ -70,6 +80,18 @@ model Booking {
   externalId   String?       @unique // ID desde Channex u otro Channel Manager
   channelRef   String?       // Referencia del canal
 
+  // TPV Virtual (Stripe) — solo IDs, nunca datos de tarjeta (ver aviso PCI-DSS arriba)
+  stripeCustomerId      String?
+  stripePaymentMethodId String?
+  stripePaymentIntentId String?
+
+  // Precheckin (el huésped completa/corrige sus datos antes de llegar)
+  precheckinCompletedAt DateTime?
+
+  // Ficha Policial / SES.HOSPEDAJES (Ministerio del Interior)
+  sesSubmittedAt     DateTime?
+  sesSubmissionError String?
+
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -98,6 +120,116 @@ model Invoice {
   booking Booking @relation(fields: [bookingId], references: [id])
 
   @@map("invoices")
+}
+
+// ─── GASTOS ───────────────────────────────────────────────────────────────────
+model Expense {
+  id            String        @id @default(cuid())
+  date          DateTime      @db.Date
+  category      String
+  description   String
+  amount        Decimal       @db.Decimal(10, 2)
+  paymentMethod PaymentMethod @default(OTHER)
+  supplier      String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+
+  @@map("expenses")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
+
+// ─── CONTROL DE CAJA ────────────────────────────────────────────────────────────
+// Arqueo diario del efectivo físico — independiente de Facturas/Stripe, el
+// personal anota a mano cada movimiento de efectivo, igual que en un TPV físico.
+model CashSession {
+  id              String            @id @default(cuid())
+  date            DateTime          @db.Date
+  openingBalance  Decimal           @db.Decimal(10, 2)
+  closingBalance  Decimal?          @db.Decimal(10, 2)
+  expectedBalance Decimal?          @db.Decimal(10, 2)
+  difference      Decimal?          @db.Decimal(10, 2)
+  status          CashSessionStatus @default(OPEN)
+  notes           String?
+  openedAt        DateTime          @default(now())
+  closedAt        DateTime?
+
+  movements CashMovement[]
+
+  @@map("cash_sessions")
+}
+
+model CashMovement {
+  id            String           @id @default(cuid())
+  cashSessionId String
+  cashSession   CashSession      @relation(fields: [cashSessionId], references: [id])
+  type          CashMovementType
+  concept       String
+  amount        Decimal          @db.Decimal(10, 2)
+  createdAt     DateTime         @default(now())
+
+  @@map("cash_movements")
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementType {
+  INCOME
+  EXPENSE
+}
+
+// ─── PRESUPUESTOS ─────────────────────────────────────────────────────────────
+// Foto del precio en el momento del presupuesto (sin FK a Room): no reserva
+// inventario ni se ve afectado si luego cambia el precio o se borra la habitación.
+model Quote {
+  id            String      @id @default(cuid())
+  quoteNumber   String      @unique // PRES-YYYY-NNNN
+  guestName     String
+  guestEmail    String
+  guestPhone    String?
+  roomName      String
+  pricePerNight Decimal     @db.Decimal(10, 2)
+  checkInDate   DateTime    @db.Date
+  checkOutDate  DateTime    @db.Date
+  subtotal      Decimal     @db.Decimal(10, 2)
+  tax           Decimal     @db.Decimal(10, 2)
+  total         Decimal     @db.Decimal(10, 2)
+  status        QuoteStatus @default(DRAFT)
+  validUntil    DateTime    @db.Date
+  notes         String?
+  convertedBookingId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("quotes")
+}
+
+enum QuoteStatus {
+  DRAFT    // Borrador
+  SENT     // Enviado al cliente
+  ACCEPTED // Aceptado (puede o no estar ya convertido en reserva)
+  REJECTED // Rechazado
+  EXPIRED  // Caducado (pasada la fecha de validez)
+}
+
+// ─── USUARIOS (backoffice) ─────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+
+  @@map("users")
 }
 
 // ─── ENUMERACIONES ────────────────────────────────────────────────────────────

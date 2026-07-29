@@ -47,6 +47,21 @@ export function calculateTotal(
   return parseFloat((basePrice * nights).toFixed(2));
 }
 
+// Días antes del check-in en los que termina la cancelación gratuita.
+// Es solo un aviso visual en el admin (el cobro lo dispara el personal a mano);
+// ajusta este número si vuestra política de cancelación cambia.
+export const FREE_CANCELLATION_DAYS = 7;
+
+export function isPastFreeCancellation(checkInDate: Date | string): boolean {
+  const ci = typeof checkInDate === "string" ? parseISO(checkInDate) : checkInDate;
+  if (!isValid(ci)) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const deadline = new Date(ci);
+  deadline.setDate(deadline.getDate() - FREE_CANCELLATION_DAYS);
+  return !isBefore(today, deadline);
+}
+
 export function isValidDateRange(checkIn: string, checkOut: string): boolean {
   const ci = parseISO(checkIn);
   const co = parseISO(checkOut);
@@ -86,6 +101,22 @@ export const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-800 border-red-200",
   CHECKED_IN: "bg-blue-100 text-blue-800 border-blue-200",
   CHECKED_OUT: "bg-stone-100 text-stone-600 border-stone-200",
+};
+
+export const QUOTE_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Borrador",
+  SENT: "Enviado",
+  ACCEPTED: "Aceptado",
+  REJECTED: "Rechazado",
+  EXPIRED: "Caducado",
+};
+
+export const QUOTE_STATUS_COLORS: Record<string, string> = {
+  DRAFT: "bg-stone-100 text-stone-600 border-stone-200",
+  SENT: "bg-blue-100 text-blue-800 border-blue-200",
+  ACCEPTED: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  REJECTED: "bg-red-100 text-red-800 border-red-200",
+  EXPIRED: "bg-amber-100 text-amber-800 border-amber-200",
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

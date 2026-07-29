@@ -1,11 +1,19 @@
 "use client";
 // app/reserva/page.tsx
-// Motor de Reservas Público — Paso a paso sin pasarela de pago
+// Motor de Reservas Público — Paso a paso
+// Si hay Stripe configurado (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY), el paso 3
+// guarda la tarjeta del huésped (tokenizada) y la reserva queda confirmada
+// al momento. Si no, se mantiene el flujo original de transferencia bancaria.
 
-import { useState } from "react";
-import { format, parseISO, differenceInDays } from "date-fns";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { format, parseISO, differenceInDays, isValid } from "date-fns";
 import { es } from "date-fns/locale";
-import Link from "next/link";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
+const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 interface Room {
   id: string;
@@ -19,6 +27,7 @@ interface Room {
 interface BookingConfirmation {
   id: string;
   totalAmount: string;
+  status: string;
   room: { name: string };
   checkInDate: string;
   checkOutDate: string;
@@ -27,19 +36,46 @@ interface BookingConfirmation {
 
 type Step = "search" | "results" | "form" | "success";
 
-export default function ReservaPage() {
-  const [step, setStep] = useState<Step>("search");
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [guests, setGuests] = useState(2);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
+const formatCurrency = (amount: string | number) =>
+  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(
+    Number(amount)
+  );
 
-  // Datos del formulario del huésped
-  const [guestForm, setGuestForm] = useState({
+const formatDateEs = (d: string) =>
+  format(parseISO(d), "d 'de' MMMM 'de' yyyy", { locale: es });
+
+interface GuestForm {
+  firstName: string;
+  lastName: string;
+  documentId: string;
+  email: string;
+  phone: string;
+  notes: string;
+}
+
+// ── Paso 3: formulario de datos + tokenización de tarjeta ──────────────────
+function BookingFormStep({
+  selectedRoom,
+  checkIn,
+  checkOut,
+  guests,
+  nights,
+  onBack,
+  onSuccess,
+}: {
+  selectedRoom: Room;
+  checkIn: string;
+  checkOut: string;
+  guests: number;
+  nights: number;
+  onBack: () => void;
+  onSuccess: (confirmation: BookingConfirmation) => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const stripeEnabled = Boolean(publishableKey);
+
+  const [guestForm, setGuestForm] = useState<GuestForm>({
     firstName: "",
     lastName: "",
     documentId: "",
@@ -47,53 +83,56 @@ export default function ReservaPage() {
     phone: "",
     notes: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const today = format(new Date(), "yyyy-MM-dd");
-
-  const nights =
-    checkIn && checkOut
-      ? Math.max(0, differenceInDays(parseISO(checkOut), parseISO(checkIn)))
-      : 0;
-
-  // ── Paso 1: Buscar disponibilidad ────────────────────────────────────────
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkIn || !checkOut || nights < 1) {
-      setError("Selecciona fechas válidas (mínimo 1 noche).");
-      return;
-    }
     setError("");
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `/api/rooms/availability?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setRooms(data.data);
-      setStep("results");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al buscar.");
-    } finally {
-      setLoading(false);
-    }
-  };
+      let stripeCustomerId: string | undefined;
+      let stripePaymentMethodId: string | undefined;
 
-  // ── Paso 2: Seleccionar habitación ───────────────────────────────────────
-  const handleSelectRoom = (room: Room) => {
-    setSelectedRoom(room);
-    setStep("form");
-  };
+      if (stripeEnabled) {
+        if (!stripe || !elements) {
+          throw new Error("El formulario de pago aún se está cargando. Inténtalo de nuevo.");
+        }
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+          throw new Error("No se pudo leer los datos de la tarjeta.");
+        }
 
-  // ── Paso 3: Enviar reserva ───────────────────────────────────────────────
-  const handleBooking = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRoom) return;
-    setError("");
-    setLoading(true);
+        const setupRes = await fetch("/api/payments/setup-intent", { method: "POST" });
+        const setupData = await setupRes.json();
+        if (!setupRes.ok) throw new Error(setupData.error ?? "No se pudo iniciar el pago.");
 
-    try {
+        const { error: stripeError, setupIntent } = await stripe.confirmCardSetup(
+          setupData.data.clientSecret,
+          {
+            payment_method: {
+              card: cardElement,
+              billing_details: {
+                name: `${guestForm.firstName} ${guestForm.lastName}`.trim(),
+                email: guestForm.email,
+              },
+            },
+          }
+        );
+
+        if (stripeError) throw new Error(stripeError.message ?? "La tarjeta fue rechazada.");
+        if (!setupIntent?.payment_method) {
+          throw new Error("No se pudo guardar la tarjeta.");
+        }
+
+        stripeCustomerId = setupData.data.customerId;
+        stripePaymentMethodId =
+          typeof setupIntent.payment_method === "string"
+            ? setupIntent.payment_method
+            : setupIntent.payment_method.id;
+      }
+
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,6 +143,8 @@ export default function ReservaPage() {
           adults: guests,
           notes: guestForm.notes,
           source: "WEB",
+          stripeCustomerId,
+          stripePaymentMethodId,
           guest: {
             firstName: guestForm.firstName,
             lastName: guestForm.lastName,
@@ -116,8 +157,7 @@ export default function ReservaPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setConfirmation(data.data);
-      setStep("success");
+      onSuccess(data.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear la reserva.");
     } finally {
@@ -125,27 +165,249 @@ export default function ReservaPage() {
     }
   };
 
-  const formatCurrency = (amount: string | number) =>
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(
-      Number(amount)
-    );
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-8">
+        <button onClick={onBack} className="btn-ghost mb-4 -ml-2">
+          ← Volver a habitaciones
+        </button>
+        <h2 className="font-serif text-3xl text-stone-800">Tus datos</h2>
+      </div>
 
-  const formatDateEs = (d: string) =>
-    format(parseISO(d), "d 'de' MMMM 'de' yyyy", { locale: es });
+      {/* Resumen de la reserva */}
+      <div className="card p-5 mb-6 bg-amber-50 border-amber-200">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="font-medium text-stone-800">{selectedRoom.name}</p>
+            <p className="text-sm text-stone-500 mt-0.5">
+              {checkIn && formatDateEs(checkIn)} → {checkOut && formatDateEs(checkOut)}
+            </p>
+            <p className="text-sm text-stone-500">
+              {nights} {nights === 1 ? "noche" : "noches"} · {guests}{" "}
+              {guests === 1 ? "persona" : "personas"}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-serif text-2xl text-stone-900">
+              {formatCurrency(Number(selectedRoom.basePrice) * nights)}
+            </p>
+            <p className="text-xs text-stone-400">Total estimado</p>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="card p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className="label mb-2">Nombre *</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="María"
+              value={guestForm.firstName}
+              onChange={(e) => setGuestForm({ ...guestForm, firstName: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label className="label mb-2">Apellidos *</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="García López"
+              value={guestForm.lastName}
+              onChange={(e) => setGuestForm({ ...guestForm, lastName: e.target.value })}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className="label mb-2">DNI / NIE / Pasaporte *</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="12345678A"
+              value={guestForm.documentId}
+              onChange={(e) =>
+                setGuestForm({ ...guestForm, documentId: e.target.value.toUpperCase() })
+              }
+              required
+            />
+          </div>
+          <div>
+            <label className="label mb-2">Teléfono</label>
+            <input
+              type="tel"
+              className="input"
+              placeholder="+34 600 000 000"
+              value={guestForm.phone}
+              onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="label mb-2">Email *</label>
+          <input
+            type="email"
+            className="input"
+            placeholder="tu@email.com"
+            value={guestForm.email}
+            onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
+            required
+          />
+          {!stripeEnabled && (
+            <p className="text-xs text-stone-400 mt-1">
+              Recibirás las instrucciones de pago en este correo.
+            </p>
+          )}
+        </div>
+
+        <div className="mb-8">
+          <label className="label mb-2">Comentarios (opcional)</label>
+          <textarea
+            className="input resize-none"
+            rows={3}
+            placeholder="Llegada tardía, alergias, ocasión especial…"
+            value={guestForm.notes}
+            onChange={(e) => setGuestForm({ ...guestForm, notes: e.target.value })}
+          />
+        </div>
+
+        {stripeEnabled ? (
+          <div className="mb-6">
+            <label className="label mb-2">Tarjeta (como garantía) *</label>
+            <div className="input py-3">
+              <CardElement options={{ style: { base: { fontSize: "16px" } } }} />
+            </div>
+            <p className="text-xs text-stone-400 mt-2">
+              🔒 No se realiza ningún cargo ahora. Guardamos tu tarjeta como garantía y
+              te cobraremos el importe total más adelante, una vez pase el plazo de
+              cancelación gratuita.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-stone-50 border border-stone-200 p-4 mb-6 text-sm text-stone-500">
+            <p className="font-medium text-stone-700 mb-1">💳 Sin pago ahora</p>
+            <p>
+              Esta reserva quedará como <strong>PENDIENTE</strong>. En breve recibirás
+              un email con los datos para realizar el pago por{" "}
+              <strong>transferencia bancaria</strong>. La reserva se confirmará al
+              recibir el ingreso.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 p-3">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          className="btn-primary w-full"
+          disabled={loading || (stripeEnabled && (!stripe || !elements))}
+        >
+          {loading ? "Procesando…" : "Confirmar solicitud de reserva →"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function ReservaPageContent() {
+  const searchParams = useSearchParams();
+
+  const [step, setStep] = useState<Step>("search");
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [guests, setGuests] = useState(2);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
+
+  const today = format(new Date(), "yyyy-MM-dd");
+
+  const nights =
+    checkIn && checkOut
+      ? Math.max(0, differenceInDays(parseISO(checkOut), parseISO(checkIn)))
+      : 0;
+
+  // ── Paso 1: Buscar disponibilidad ────────────────────────────────────────
+  const performSearch = async (ci: string, co: string, g: number) => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/rooms/availability?checkIn=${ci}&checkOut=${co}&guests=${g}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setRooms(data.data);
+      setStep("results");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al buscar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checkIn || !checkOut || nights < 1) {
+      setError("Selecciona fechas válidas (mínimo 1 noche).");
+      return;
+    }
+    await performSearch(checkIn, checkOut, guests);
+  };
+
+  // ── Prefill desde el widget de villalen.es (?checkIn=&checkOut=&guests=) ──
+  // Si vienen los tres parámetros y son válidos, saltamos directo a resultados.
+  useEffect(() => {
+    const qpCheckIn = searchParams.get("checkIn");
+    const qpCheckOut = searchParams.get("checkOut");
+    const qpGuests = searchParams.get("guests");
+
+    if (!qpCheckIn || !qpCheckOut) return;
+
+    const ci = parseISO(qpCheckIn);
+    const co = parseISO(qpCheckOut);
+    if (!isValid(ci) || !isValid(co) || ci >= co) return;
+
+    const g = qpGuests ? Math.max(1, parseInt(qpGuests, 10) || 1) : 2;
+
+    setCheckIn(qpCheckIn);
+    setCheckOut(qpCheckOut);
+    setGuests(g);
+    performSearch(qpCheckIn, qpCheckOut, g);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Paso 2: Seleccionar habitación ───────────────────────────────────────
+  const handleSelectRoom = (room: Room) => {
+    setSelectedRoom(room);
+    setStep("form");
+  };
 
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Header */}
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="group">
+          <a href="https://www.villalen.es" className="group">
             <h1 className="font-serif text-xl text-stone-900 group-hover:text-amber-800 transition-colors">
-              Casa do Souto
+              Villalén
             </h1>
             <p className="text-xs uppercase tracking-widest text-stone-400">
               Motor de Reservas
             </p>
-          </Link>
+          </a>
           {/* Indicador de pasos */}
           <div className="hidden md:flex items-center gap-3 text-xs text-stone-400">
             {(["search", "results", "form", "success"] as Step[]).map(
@@ -254,7 +516,7 @@ export default function ReservaPage() {
 
             <div className="mt-6 text-center">
               <p className="text-xs text-stone-400">
-                🔒 Reserva segura sin tarjeta. Pago por transferencia bancaria al confirmar.
+                🔒 Reserva segura. {publishableKey ? "Pago con tarjeta protegido por Stripe." : "Pago por transferencia bancaria al confirmar."}
               </p>
             </div>
           </div>
@@ -358,158 +620,20 @@ export default function ReservaPage() {
 
         {/* ── PASO 3: FORMULARIO DE DATOS ── */}
         {step === "form" && selectedRoom && (
-          <div className="max-w-2xl mx-auto">
-            <div className="mb-8">
-              <button onClick={() => setStep("results")} className="btn-ghost mb-4 -ml-2">
-                ← Volver a habitaciones
-              </button>
-              <h2 className="font-serif text-3xl text-stone-800">Tus datos</h2>
-            </div>
-
-            {/* Resumen de la reserva */}
-            <div className="card p-5 mb-6 bg-amber-50 border-amber-200">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium text-stone-800">{selectedRoom.name}</p>
-                  <p className="text-sm text-stone-500 mt-0.5">
-                    {checkIn && formatDateEs(checkIn)} →{" "}
-                    {checkOut && formatDateEs(checkOut)}
-                  </p>
-                  <p className="text-sm text-stone-500">
-                    {nights} {nights === 1 ? "noche" : "noches"} ·{" "}
-                    {guests} {guests === 1 ? "persona" : "personas"}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-serif text-2xl text-stone-900">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                    }).format(Number(selectedRoom.basePrice) * nights)}
-                  </p>
-                  <p className="text-xs text-stone-400">Total estimado</p>
-                </div>
-              </div>
-            </div>
-
-            <form onSubmit={handleBooking} className="card p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label className="label mb-2">Nombre *</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="María"
-                    value={guestForm.firstName}
-                    onChange={(e) =>
-                      setGuestForm({ ...guestForm, firstName: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label mb-2">Apellidos *</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="García López"
-                    value={guestForm.lastName}
-                    onChange={(e) =>
-                      setGuestForm({ ...guestForm, lastName: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label className="label mb-2">DNI / NIE / Pasaporte *</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="12345678A"
-                    value={guestForm.documentId}
-                    onChange={(e) =>
-                      setGuestForm({
-                        ...guestForm,
-                        documentId: e.target.value.toUpperCase(),
-                      })
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label mb-2">Teléfono</label>
-                  <input
-                    type="tel"
-                    className="input"
-                    placeholder="+34 600 000 000"
-                    value={guestForm.phone}
-                    onChange={(e) =>
-                      setGuestForm({ ...guestForm, phone: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <label className="label mb-2">Email *</label>
-                <input
-                  type="email"
-                  className="input"
-                  placeholder="tu@email.com"
-                  value={guestForm.email}
-                  onChange={(e) =>
-                    setGuestForm({ ...guestForm, email: e.target.value })
-                  }
-                  required
-                />
-                <p className="text-xs text-stone-400 mt-1">
-                  Recibirás las instrucciones de pago en este correo.
-                </p>
-              </div>
-
-              <div className="mb-8">
-                <label className="label mb-2">Comentarios (opcional)</label>
-                <textarea
-                  className="input resize-none"
-                  rows={3}
-                  placeholder="Llegada tardía, alergias, ocasión especial…"
-                  value={guestForm.notes}
-                  onChange={(e) =>
-                    setGuestForm({ ...guestForm, notes: e.target.value })
-                  }
-                />
-              </div>
-
-              {error && (
-                <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 p-3">
-                  {error}
-                </p>
-              )}
-
-              <div className="bg-stone-50 border border-stone-200 p-4 mb-6 text-sm text-stone-500">
-                <p className="font-medium text-stone-700 mb-1">
-                  💳 Sin pago ahora
-                </p>
-                <p>
-                  Esta reserva quedará como <strong>PENDIENTE</strong>. En
-                  breve recibirás un email con los datos para realizar el pago
-                  por <strong>transferencia bancaria</strong>. La reserva se
-                  confirmará al recibir el ingreso.
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                className="btn-primary w-full"
-                disabled={loading}
-              >
-                {loading ? "Procesando…" : "Confirmar solicitud de reserva →"}
-              </button>
-            </form>
-          </div>
+          <Elements stripe={stripePromise}>
+            <BookingFormStep
+              selectedRoom={selectedRoom}
+              checkIn={checkIn}
+              checkOut={checkOut}
+              guests={guests}
+              nights={nights}
+              onBack={() => setStep("results")}
+              onSuccess={(data) => {
+                setConfirmation(data);
+                setStep("success");
+              }}
+            />
+          </Elements>
         )}
 
         {/* ── PASO 4: ÉXITO ── */}
@@ -518,18 +642,28 @@ export default function ReservaPage() {
             <div className="card p-10">
               <div className="text-5xl mb-6">🎉</div>
               <p className="text-xs uppercase tracking-widest text-amber-700 mb-2">
-                Solicitud recibida
+                {confirmation.status === "CONFIRMED" ? "Reserva confirmada" : "Solicitud recibida"}
               </p>
               <h2 className="font-serif text-3xl text-stone-800 mb-4">
                 ¡Gracias, {confirmation.guest.firstName}!
               </h2>
               <p className="text-stone-500 mb-6 leading-relaxed">
-                Hemos registrado tu solicitud de reserva correctamente. En breve
-                recibirás un email en{" "}
-                <strong>{confirmation.guest.email}</strong> con las instrucciones
-                para realizar el pago por{" "}
-                <strong>transferencia bancaria</strong>. La reserva quedará
-                confirmada en cuanto recibamos el ingreso.
+                {confirmation.status === "CONFIRMED" ? (
+                  <>
+                    Tu reserva está <strong>confirmada</strong>. Hemos guardado tu
+                    tarjeta como garantía; no se ha realizado ningún cargo todavía.
+                    Te enviaremos la confirmación a{" "}
+                    <strong>{confirmation.guest.email}</strong>.
+                  </>
+                ) : (
+                  <>
+                    Hemos registrado tu solicitud de reserva correctamente. En breve
+                    recibirás un email en <strong>{confirmation.guest.email}</strong>{" "}
+                    con las instrucciones para realizar el pago por{" "}
+                    <strong>transferencia bancaria</strong>. La reserva quedará
+                    confirmada en cuanto recibamos el ingreso.
+                  </>
+                )}
               </p>
 
               <div className="border border-stone-200 divide-y divide-stone-100 text-left mb-8">
@@ -570,30 +704,37 @@ export default function ReservaPage() {
                     Importe Total
                   </span>
                   <span className="font-serif text-lg text-stone-800">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                    }).format(Number(confirmation.totalAmount))}
+                    {formatCurrency(confirmation.totalAmount)}
                   </span>
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900 mb-8">
-                <p className="font-semibold mb-1">📧 Próximos pasos:</p>
-                <ol className="text-left space-y-1 list-decimal list-inside text-amber-800">
-                  <li>Revisa tu bandeja de entrada (y spam).</li>
-                  <li>Realiza la transferencia con el importe indicado.</li>
-                  <li>Te enviaremos la confirmación definitiva en 24h.</li>
-                </ol>
-              </div>
+              {confirmation.status !== "CONFIRMED" && (
+                <div className="bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900 mb-8">
+                  <p className="font-semibold mb-1">📧 Próximos pasos:</p>
+                  <ol className="text-left space-y-1 list-decimal list-inside text-amber-800">
+                    <li>Revisa tu bandeja de entrada (y spam).</li>
+                    <li>Realiza la transferencia con el importe indicado.</li>
+                    <li>Te enviaremos la confirmación definitiva en 24h.</li>
+                  </ol>
+                </div>
+              )}
 
-              <Link href="/" className="btn-secondary w-full justify-center">
-                ← Volver al inicio
-              </Link>
+              <a href="https://www.villalen.es" className="btn-secondary w-full justify-center">
+                ← Volver a villalen.es
+              </a>
             </div>
           </div>
         )}
       </main>
     </div>
+  );
+}
+
+export default function ReservaPage() {
+  return (
+    <Suspense>
+      <ReservaPageContent />
+    </Suspense>
   );
 }

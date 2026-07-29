@@ -8,16 +8,7 @@
 import { prisma } from "@/lib/prisma";
 import { formatDate, detectDocumentType } from "@/lib/utils";
 import { format } from "date-fns";
-
-const ESTABLISHMENT = {
-  name: process.env.HOTEL_NAME ?? "Casa do Souto",
-  cif: "B-XXXXXXXX", // Completar con CIF real
-  address: "Lugar de Exemplo, s/n",
-  municipality: "Caldas de Reis",
-  province: "Pontevedra",
-  autonomousCommunity: "Galicia",
-  registrationNumber: "TURT-2024-XXXXX", // Número de registro turístico
-};
+import { ESTABLISHMENT } from "@/lib/establishment";
 
 /**
  * Genera la ficha de viajero en formato XML para una reserva concreta.
@@ -50,7 +41,7 @@ export async function generateTravelerRecordXML(
   Ministerio del Interior - Guardia Civil / Policía Nacional
   Real Decreto 933/2021, de 26 de octubre
   
-  Sistema de Gestión: Hotel PMS - Casa do Souto
+  Sistema de Gestión: Villalén PMS
   Generado: ${format(new Date(), "yyyy-MM-dd'T'HH:mm:ss")}
   
   NOTA: Este es un fichero simulado para desarrollo.

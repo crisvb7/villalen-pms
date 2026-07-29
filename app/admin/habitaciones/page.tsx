@@ -12,6 +12,8 @@ interface Room {
   basePrice: string;
   isClean: boolean;
   amenities: string[];
+  channexRoomTypeId: string | null;
+  channexRatePlanId: string | null;
 }
 
 export default function HabitacionesPage() {
@@ -26,6 +28,10 @@ export default function HabitacionesPage() {
     basePrice: "",
     amenities: "",
   });
+  const [channelRoomId, setChannelRoomId] = useState<string | null>(null);
+  const [channelForm, setChannelForm] = useState({ channexRoomTypeId: "", channexRatePlanId: "" });
+  const [channelSaving, setChannelSaving] = useState(false);
+  const [channelMessage, setChannelMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRooms();
@@ -61,6 +67,48 @@ export default function HabitacionesPage() {
       await fetchRooms();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openChannelPanel = (room: Room) => {
+    if (channelRoomId === room.id) {
+      setChannelRoomId(null);
+      return;
+    }
+    setChannelRoomId(room.id);
+    setChannelMessage(null);
+    setChannelForm({
+      channexRoomTypeId: room.channexRoomTypeId ?? "",
+      channexRatePlanId: room.channexRatePlanId ?? "",
+    });
+  };
+
+  const handleSaveChannel = async (id: string) => {
+    setChannelSaving(true);
+    setChannelMessage(null);
+    try {
+      const res = await fetch(`/api/rooms/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(channelForm),
+      });
+      const data = await res.json();
+      setChannelMessage(res.ok ? "Mapeo guardado." : data.error ?? "Error al guardar.");
+      if (res.ok) await fetchRooms();
+    } finally {
+      setChannelSaving(false);
+    }
+  };
+
+  const handleSyncNow = async (id: string) => {
+    setChannelSaving(true);
+    setChannelMessage(null);
+    try {
+      const res = await fetch(`/api/rooms/${id}/channex-sync`, { method: "POST" });
+      const data = await res.json();
+      setChannelMessage(res.ok ? data.message : data.error ?? "Error al sincronizar.");
+    } finally {
+      setChannelSaving(false);
     }
   };
 
@@ -207,6 +255,17 @@ export default function HabitacionesPage() {
                       {room.isClean ? "✓ Limpia" : "Sucia"}
                     </span>
                     <button
+                      onClick={() => openChannelPanel(room)}
+                      className={cn(
+                        "text-xs px-2 py-0.5 border transition-colors",
+                        room.channexRoomTypeId
+                          ? "bg-sky-50 text-sky-700 border-sky-200"
+                          : "bg-stone-50 text-stone-500 border-stone-200"
+                      )}
+                    >
+                      {room.channexRoomTypeId ? "✓ Canales" : "Canales"}
+                    </button>
+                    <button
                       onClick={() => handleDelete(room.id, room.name)}
                       className="text-xs text-red-500 hover:text-red-700 transition-colors"
                     >
@@ -214,6 +273,58 @@ export default function HabitacionesPage() {
                     </button>
                   </div>
                 </div>
+
+                {channelRoomId === room.id && (
+                  <div className="mt-3 border border-stone-200 p-4 bg-stone-50">
+                    <p className="text-xs text-stone-500 mb-3">
+                      Mapeo con el Channel Manager (Channex). Crea antes el room type y el
+                      rate plan de esta habitación en el dashboard de Channex y pega aquí sus IDs.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="label mb-1">Channex Room Type ID</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={channelForm.channexRoomTypeId}
+                          onChange={(e) =>
+                            setChannelForm({ ...channelForm, channexRoomTypeId: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label mb-1">Channex Rate Plan ID</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={channelForm.channexRatePlanId}
+                          onChange={(e) =>
+                            setChannelForm({ ...channelForm, channexRatePlanId: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        className="btn-primary text-sm"
+                        disabled={channelSaving}
+                        onClick={() => handleSaveChannel(room.id)}
+                      >
+                        {channelSaving ? "Guardando…" : "Guardar mapeo"}
+                      </button>
+                      <button
+                        className="btn-secondary text-sm"
+                        disabled={channelSaving || !room.channexRoomTypeId}
+                        onClick={() => handleSyncNow(room.id)}
+                      >
+                        Sincronizar ahora
+                      </button>
+                      {channelMessage && (
+                        <span className="text-xs text-stone-600">{channelMessage}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {room.description && (
                   <p className="text-sm text-stone-500 mb-3 leading-relaxed">
                     {room.description}

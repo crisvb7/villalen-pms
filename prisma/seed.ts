@@ -3,8 +3,12 @@
 // Ejecutar: npm run db:seed
 
 import { PrismaClient, BookingStatus, BookingSource } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+const DEV_ADMIN_EMAIL = "admin@casadosouto.es";
+const DEV_ADMIN_PASSWORD = "cambiar1234";
 
 async function main() {
   console.log("🌱 Iniciando seed de la base de datos...\n");
@@ -184,6 +188,19 @@ async function main() {
   });
 
   console.log("🧾 Factura de prueba creada: FAC-2024-001\n");
+
+  // ── Usuario de desarrollo para /admin/login ──────────────────────────────
+  const passwordHash = await bcrypt.hash(DEV_ADMIN_PASSWORD, 12);
+  await prisma.user.upsert({
+    where: { email: DEV_ADMIN_EMAIL },
+    update: { passwordHash },
+    create: { email: DEV_ADMIN_EMAIL, passwordHash, name: "Admin" },
+  });
+  console.log("👤 Usuario de desarrollo para /admin/login:");
+  console.log(`   Email:      ${DEV_ADMIN_EMAIL}`);
+  console.log(`   Contraseña: ${DEV_ADMIN_PASSWORD}`);
+  console.log("   ⚠️  Solo para desarrollo — usa `npm run create-admin` en producción.\n");
+
   console.log(
     "✅ Seed completado con éxito. Base de datos lista para desarrollo.\n"
   );

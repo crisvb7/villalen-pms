@@ -6,8 +6,14 @@ import {
   getCleaningStatus,
   updateCleaningStatus,
 } from "@/lib/services/room.service";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET() {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const rooms = await getCleaningStatus();
     return NextResponse.json({ data: rooms });
@@ -21,6 +27,11 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { id, isClean } = body;

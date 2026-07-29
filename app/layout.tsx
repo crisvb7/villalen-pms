@@ -4,11 +4,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Casa do Souto — Casa de Aldea",
-    template: "%s | Casa do Souto",
+    default: "Villalén — Panel de gestión",
+    template: "%s | Villalén",
   },
   description:
-    "Casa de aldea en el corazón de Galicia. Reserva tu estancia en un entorno de naturaleza y tradición.",
+    "Sistema de gestión de Villalén, casa de aldea en Cuerres, Ribadesella (oriente de Asturias).",
 };
 
 export default function RootLayout({

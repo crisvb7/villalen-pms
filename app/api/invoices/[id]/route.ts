@@ -6,11 +6,17 @@ import {
   getInvoiceById,
   markInvoiceAsPaid,
 } from "@/lib/services/invoice.service";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const invoice = await getInvoiceById(params.id);
     if (!invoice) {
@@ -33,6 +39,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
 

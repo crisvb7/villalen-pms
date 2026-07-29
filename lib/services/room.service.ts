@@ -2,7 +2,8 @@
 // Capa de servicio para la gestión de Habitaciones
 
 import { prisma } from "@/lib/prisma";
-import { parseISO, isValid } from "date-fns";
+import { parseISO, isValid, addDays } from "date-fns";
+import { pushAvailabilityAndRates } from "@/lib/services/channex.service";
 
 export interface CreateRoomData {
   name: string;
@@ -15,7 +16,11 @@ export interface CreateRoomData {
 
 export interface UpdateRoomData extends Partial<CreateRoomData> {
   isClean?: boolean;
+  channexRoomTypeId?: string;
+  channexRatePlanId?: string;
 }
+
+const CHANNEX_SYNC_WINDOW_DAYS = 365;
 
 // ── CRUD Habitaciones ─────────────────────────────────────────────────────
 
@@ -56,10 +61,19 @@ export async function createRoom(data: CreateRoomData) {
 }
 
 export async function updateRoom(id: string, data: UpdateRoomData) {
-  return prisma.room.update({
+  const room = await prisma.room.update({
     where: { id },
     data,
   });
+
+  // Si cambia el precio o se acaba de mapear la habitación a un canal,
+  // republicar la ventana completa para que Channex refleje la tarifa actual.
+  if (data.basePrice !== undefined || data.channexRoomTypeId || data.channexRatePlanId) {
+    const today = new Date();
+    await pushAvailabilityAndRates(id, today, addDays(today, CHANNEX_SYNC_WINDOW_DAYS));
+  }
+
+  return room;
 }
 
 export async function deleteRoom(id: string) {

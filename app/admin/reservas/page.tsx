@@ -10,6 +10,7 @@ import {
   STATUS_COLORS,
   SOURCE_LABELS,
   getNights,
+  isPastFreeCancellation,
 } from "@/lib/utils";
 
 interface Booking {
@@ -20,6 +21,7 @@ interface Booking {
   source: string;
   totalAmount: string;
   depositPaid: boolean;
+  stripePaymentMethodId: string | null;
   adults: number;
   children: number;
   guest: {
@@ -32,6 +34,10 @@ interface Booking {
     name: string;
     basePrice: string;
   };
+  invoices: { id: string }[];
+  precheckinCompletedAt: string | null;
+  sesSubmittedAt: string | null;
+  sesSubmissionError: string | null;
 }
 
 export default function AdminReservasPage() {
@@ -39,6 +45,11 @@ export default function AdminReservasPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [charging, setCharging] = useState<string | null>(null);
+  const [chargeError, setChargeError] = useState<{ id: string; message: string } | null>(null);
+  const [invoicing, setInvoicing] = useState<string | null>(null);
+  const [sendingSes, setSendingSes] = useState<string | null>(null);
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBookings();
@@ -73,6 +84,73 @@ export default function AdminReservasPage() {
     if (!confirm("¿Cancelar esta reserva? Esta acción no se puede deshacer."))
       return;
     await handleStatusChange(id, "CANCELLED");
+  };
+
+  const handleCharge = async (id: string, totalAmount: string) => {
+    if (!confirm(`¿Cobrar ${formatCurrency(totalAmount)} a la tarjeta guardada de esta reserva?`))
+      return;
+    setCharging(id);
+    setChargeError(null);
+    try {
+      const res = await fetch(`/api/bookings/${id}/charge`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setChargeError({ id, message: data.error ?? "Error al cobrar." });
+        return;
+      }
+      await fetchBookings();
+    } finally {
+      setCharging(null);
+    }
+  };
+
+  const handleResendEmail = async (id: string) => {
+    setResendingEmail(id);
+    try {
+      const res = await fetch(`/api/bookings/${id}/resend-email`, { method: "POST" });
+      const data = await res.json();
+      alert(res.ok ? data.message : data.error);
+    } finally {
+      setResendingEmail(null);
+    }
+  };
+
+  const handleCopyPrecheckinLink = async (id: string) => {
+    const link = `${window.location.origin}/precheckin/${id}`;
+    await navigator.clipboard.writeText(link);
+    alert("Enlace de precheckin copiado al portapapeles.");
+  };
+
+  const handleSendSes = async (id: string) => {
+    setSendingSes(id);
+    try {
+      const res = await fetch(`/api/bookings/${id}/ses-submit`, { method: "POST" });
+      const data = await res.json();
+      alert(res.ok ? data.message : data.error);
+      await fetchBookings();
+    } finally {
+      setSendingSes(null);
+    }
+  };
+
+  const handleInvoice = async (id: string) => {
+    setInvoicing(id);
+    try {
+      const res = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "Error al crear la factura.");
+        return;
+      }
+      window.open(`/api/invoices/${data.data.id}/pdf`, "_blank");
+      await fetchBookings();
+    } finally {
+      setInvoicing(null);
+    }
   };
 
   const filtered =
@@ -205,6 +283,17 @@ export default function AdminReservasPage() {
                             : ""}{" "}
                           · {nights} noche{nights !== 1 ? "s" : ""}
                         </p>
+                        {booking.precheckinCompletedAt && (
+                          <span className="text-xs text-emerald-600 block">✓ Precheckin</span>
+                        )}
+                        {booking.sesSubmittedAt && (
+                          <span className="text-xs text-emerald-600 block">✓ Enviado a Policía</span>
+                        )}
+                        {booking.sesSubmissionError && !booking.sesSubmittedAt && (
+                          <span className="text-xs text-red-600 block" title={booking.sesSubmissionError}>
+                            ⚠ Error envío Policía
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-stone-600">
                         {formatDate(booking.checkInDate)}
@@ -216,8 +305,14 @@ export default function AdminReservasPage() {
                         <p className="font-medium text-stone-800">
                           {formatCurrency(booking.totalAmount)}
                         </p>
-                        {booking.depositPaid && (
+                        {booking.depositPaid ? (
                           <p className="text-xs text-emerald-600">✓ Pagado</p>
+                        ) : (
+                          booking.stripePaymentMethodId &&
+                          !["CANCELLED", "CHECKED_OUT"].includes(booking.status) &&
+                          isPastFreeCancellation(booking.checkInDate) && (
+                            <p className="text-xs text-amber-600">⚠ Plazo cancelación vencido</p>
+                          )
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -233,7 +328,53 @@ export default function AdminReservasPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {!["CANCELLED", "CHECKED_OUT"].includes(booking.status) && (
+                            <button
+                              onClick={() => handleCopyPrecheckinLink(booking.id)}
+                              className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 hover:bg-blue-100 transition-colors"
+                            >
+                              🔗 Precheckin
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleResendEmail(booking.id)}
+                            disabled={resendingEmail === booking.id}
+                            className="text-xs bg-stone-100 text-stone-600 border border-stone-200 px-2 py-1 hover:bg-stone-200 transition-colors disabled:opacity-50"
+                          >
+                            {resendingEmail === booking.id ? "Enviando…" : "📧 Reenviar email"}
+                          </button>
+                          {!booking.sesSubmittedAt &&
+                            !["CANCELLED"].includes(booking.status) && (
+                              <button
+                                onClick={() => handleSendSes(booking.id)}
+                                disabled={sendingSes === booking.id}
+                                className="text-xs bg-stone-700 text-white px-2 py-1 hover:bg-stone-800 transition-colors disabled:opacity-50"
+                              >
+                                {sendingSes === booking.id ? "Enviando…" : "📤 Enviar a Policía"}
+                              </button>
+                            )}
+                          {booking.stripePaymentMethodId &&
+                            !booking.depositPaid &&
+                            !["CANCELLED", "CHECKED_OUT"].includes(booking.status) && (
+                              <button
+                                onClick={() => handleCharge(booking.id, booking.totalAmount)}
+                                disabled={charging === booking.id}
+                                className="text-xs bg-amber-600 text-white px-2 py-1 hover:bg-amber-700 transition-colors disabled:opacity-50"
+                              >
+                                {charging === booking.id ? "Cobrando…" : "💳 Cobrar ahora"}
+                              </button>
+                            )}
+                          {["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"].includes(booking.status) &&
+                            booking.invoices.length === 0 && (
+                              <button
+                                onClick={() => handleInvoice(booking.id)}
+                                disabled={invoicing === booking.id}
+                                className="text-xs bg-stone-700 text-white px-2 py-1 hover:bg-stone-800 transition-colors disabled:opacity-50"
+                              >
+                                {invoicing === booking.id ? "Facturando…" : "🧾 Facturar"}
+                              </button>
+                            )}
                           {booking.status === "PENDING" && (
                             <button
                               onClick={() =>
@@ -283,6 +424,9 @@ export default function AdminReservasPage() {
                             </button>
                           )}
                         </div>
+                        {chargeError?.id === booking.id && (
+                          <p className="text-xs text-red-600 mt-1">{chargeError.message}</p>
+                        )}
                       </td>
                     </tr>
                   );

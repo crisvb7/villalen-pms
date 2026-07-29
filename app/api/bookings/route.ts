@@ -7,8 +7,14 @@ import {
   createBooking,
 } from "@/lib/services/booking.service";
 import { BookingStatus } from "@prisma/client";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") as BookingStatus | null;
@@ -65,6 +71,8 @@ export async function POST(request: NextRequest) {
       children: body.children ?? 0,
       notes: body.notes,
       source: body.source,
+      stripeCustomerId: body.stripeCustomerId,
+      stripePaymentMethodId: body.stripePaymentMethodId,
       guest: {
         firstName: body.guest.firstName,
         lastName: body.guest.lastName,

@@ -3,8 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 import { getAllRooms, createRoom } from "@/lib/services/room.service";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET() {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const rooms = await getAllRooms();
     return NextResponse.json({ data: rooms });
@@ -18,6 +24,11 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { name, description, capacity, basePrice, amenities, imageUrl } = body;

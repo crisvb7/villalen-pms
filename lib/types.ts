@@ -79,6 +79,9 @@ export interface CreateBookingInput {
   children?: number;
   notes?: string;
   source?: BookingSource;
+  // Tarjeta tokenizada en Stripe (si el huésped la guardó en el motor de reservas)
+  stripeCustomerId?: string;
+  stripePaymentMethodId?: string;
   // Datos del huésped (nuevo o existente)
   guest: {
     firstName: string;

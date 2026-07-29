@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Prisma necesita estar en la lista de paquetes externos del servidor
-  // para que Vercel no intente empaquetarlo como código de cliente
-  serverExternalPackages: ["@prisma/client", "prisma"],
-
   experimental: {
+    // Prisma necesita estar en la lista de paquetes externos del servidor
+    // para que Vercel no intente empaquetarlo como código de cliente
+    // (en Next 14.1 esta opción todavía va dentro de "experimental").
+    serverComponentsExternalPackages: ["@prisma/client", "prisma"],
     serverActions: {
       allowedOrigins: ["localhost:3000"],
     },

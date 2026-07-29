@@ -39,6 +39,16 @@ module.exports = {
           800: "#92400e",
           900: "#78350f",
         },
+        // Azul pizarra de la fachada real de Villalén — acento de marca,
+        // usado con moderación (login, detalles puntuales).
+        villalen: {
+          50: "#eef2f3",
+          200: "#c3d1d4",
+          400: "#5e808a",
+          600: "#3e5a63",
+          800: "#2c4048",
+          900: "#1f2e33",
+        },
       },
       backgroundImage: {
         "stone-texture":

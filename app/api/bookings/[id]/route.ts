@@ -9,11 +9,17 @@ import {
   deleteBooking,
 } from "@/lib/services/booking.service";
 import { BookingStatus } from "@prisma/client";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const booking = await getBookingById(params.id);
     if (!booking) {
@@ -36,6 +42,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const updated = await updateBooking(params.id, {
@@ -61,6 +72,11 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     await deleteBooking(params.id);
     return NextResponse.json({ message: "Reserva eliminada correctamente." });

@@ -5,8 +5,13 @@
 
 import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
+import { InvoiceDocument } from "@/lib/pdf/invoice-document";
+import { renderPdfBuffer } from "@/lib/pdf/render";
+import { sendEmail } from "@/lib/email/client";
+import { InvoiceEmail } from "@/lib/email/templates/InvoiceEmail";
+import { formatCurrency } from "@/lib/utils";
 
-const IVA_RATE = 0.10; // IVA turístico reducido (10%)
+export const IVA_RATE = 0.10; // IVA turístico reducido (10%)
 
 // Generar número de factura correlativo: FAC-YYYY-NNNN
 async function generateInvoiceNumber(): Promise<string> {
@@ -50,7 +55,7 @@ export async function createInvoice(bookingId: string) {
   const tax = parseFloat((total - subtotal).toFixed(2));
   const invoiceNumber = await generateInvoiceNumber();
 
-  return prisma.invoice.create({
+  const invoice = await prisma.invoice.create({
     data: {
       bookingId,
       subtotal,
@@ -61,6 +66,20 @@ export async function createInvoice(bookingId: string) {
     },
     include: { booking: { include: { guest: true, room: true } } },
   });
+
+  const pdfBuffer = await renderInvoicePdf(invoice.id);
+  await sendEmail({
+    to: invoice.booking.guest.email,
+    subject: `Tu factura ${invoice.invoiceNumber}`,
+    react: InvoiceEmail({
+      guestFirstName: invoice.booking.guest.firstName,
+      invoiceNumber: invoice.invoiceNumber,
+      totalAmount: formatCurrency(invoice.total.toString()),
+    }),
+    attachments: [{ filename: `${invoice.invoiceNumber}.pdf`, content: pdfBuffer }],
+  });
+
+  return invoice;
 }
 
 export async function getInvoiceById(id: string) {
@@ -81,6 +100,43 @@ export async function getAllInvoices() {
     },
     orderBy: { createdAt: "desc" },
   });
+}
+
+/**
+ * Genera el PDF de una factura ya existente (reutilizado por el email
+ * automático y por GET /api/invoices/:id/pdf).
+ */
+export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
+  const invoice = await getInvoiceById(invoiceId);
+  if (!invoice) throw new Error("Factura no encontrada.");
+
+  const { booking } = invoice;
+  const nights = Math.max(
+    1,
+    Math.round((booking.checkOutDate.getTime() - booking.checkInDate.getTime()) / 86_400_000)
+  );
+  const pricePerNight = (parseFloat(invoice.total.toString()) / nights).toFixed(2);
+
+  return renderPdfBuffer(
+    InvoiceDocument({
+      documentTitle: "FACTURA",
+      documentNumber: invoice.invoiceNumber,
+      issueDate: invoice.issueDate,
+      subtotal: invoice.subtotal.toString(),
+      tax: invoice.tax.toString(),
+      total: invoice.total.toString(),
+      client: {
+        name: `${booking.guest.firstName} ${booking.guest.lastName}`,
+        documentId: booking.guest.documentId,
+        email: booking.guest.email,
+      },
+      roomName: booking.room.name,
+      pricePerNight,
+      checkInDate: booking.checkInDate,
+      checkOutDate: booking.checkOutDate,
+      isPaid: invoice.isPaid,
+    })
+  );
 }
 
 export async function markInvoiceAsPaid(id: string) {

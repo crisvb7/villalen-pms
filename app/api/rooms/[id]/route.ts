@@ -7,11 +7,17 @@ import {
   updateRoom,
   deleteRoom,
 } from "@/lib/services/room.service";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const room = await getRoomById(params.id);
     if (!room) {
@@ -34,6 +40,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const room = await updateRoom(params.id, {
@@ -44,6 +55,8 @@ export async function PATCH(
       isClean: body.isClean,
       amenities: body.amenities,
       imageUrl: body.imageUrl,
+      channexRoomTypeId: body.channexRoomTypeId,
+      channexRatePlanId: body.channexRatePlanId,
     });
     return NextResponse.json({ data: room });
   } catch (error) {
@@ -59,6 +72,11 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth();
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   try {
     await deleteRoom(params.id);
     return NextResponse.json({ message: "Habitación eliminada correctamente." });

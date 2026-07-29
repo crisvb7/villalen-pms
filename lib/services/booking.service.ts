@@ -6,6 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { parseISO, differenceInDays } from "date-fns";
 import { BookingStatus, BookingSource } from "@prisma/client";
 import { CreateBookingInput } from "@/lib/types";
+import { pushAvailabilityAndRates } from "@/lib/services/channex.service";
+import { sendEmail } from "@/lib/email/client";
+import { BookingConfirmationEmail } from "@/lib/email/templates/BookingConfirmationEmail";
+import { BookingCancelledEmail } from "@/lib/email/templates/BookingCancelledEmail";
+import { formatDateLong, formatCurrency } from "@/lib/utils";
 
 // ── Anti-Overbooking ──────────────────────────────────────────────────────
 
@@ -45,6 +50,7 @@ export async function getAllBookings(filters?: {
     include: {
       guest: true,
       room: true,
+      invoices: { select: { id: true } },
     },
     orderBy: { checkInDate: "asc" },
   });
@@ -119,6 +125,10 @@ export async function createBooking(input: CreateBookingInput) {
     });
   }
 
+  // Si el huésped ya guardó una tarjeta (Stripe) al reservar, la reserva
+  // queda confirmada de inmediato en vez de esperar transferencia bancaria.
+  const hasStripeCard = Boolean(input.stripeCustomerId && input.stripePaymentMethodId);
+
   // Crear la reserva
   const booking = await prisma.booking.create({
     data: {
@@ -127,14 +137,33 @@ export async function createBooking(input: CreateBookingInput) {
       checkInDate: checkIn,
       checkOutDate: checkOut,
       totalAmount,
-      status: BookingStatus.PENDING,
+      status: hasStripeCard ? BookingStatus.CONFIRMED : BookingStatus.PENDING,
       source: input.source ?? BookingSource.WEB,
       depositPaid: false,
       adults: input.adults,
       children: input.children ?? 0,
       notes: input.notes,
+      stripeCustomerId: input.stripeCustomerId,
+      stripePaymentMethodId: input.stripePaymentMethodId,
     },
     include: { guest: true, room: true },
+  });
+
+  await pushAvailabilityAndRates(booking.roomId, checkIn, checkOut);
+
+  await sendEmail({
+    to: booking.guest.email,
+    subject: hasStripeCard ? "Tu reserva está confirmada" : "Hemos recibido tu solicitud de reserva",
+    react: BookingConfirmationEmail({
+      guestFirstName: booking.guest.firstName,
+      roomName: booking.room.name,
+      checkInDate: formatDateLong(booking.checkInDate),
+      checkOutDate: formatDateLong(booking.checkOutDate),
+      totalAmount: formatCurrency(booking.totalAmount.toString()),
+      status: hasStripeCard ? "CONFIRMED" : "PENDING",
+      precheckinUrl: `${process.env.NEXTAUTH_URL ?? ""}/precheckin/${booking.id}`,
+      bankIban: process.env.HOTEL_BANK_IBAN,
+    }),
   });
 
   return booking;
@@ -145,7 +174,7 @@ export async function updateBookingStatus(
   status: BookingStatus,
   depositPaid?: boolean
 ) {
-  return prisma.booking.update({
+  const booking = await prisma.booking.update({
     where: { id },
     data: {
       status,
@@ -153,6 +182,10 @@ export async function updateBookingStatus(
     },
     include: { guest: true, room: true },
   });
+
+  await pushAvailabilityAndRates(booking.roomId, booking.checkInDate, booking.checkOutDate);
+
+  return booking;
 }
 
 export async function updateBooking(
@@ -168,15 +201,15 @@ export async function updateBooking(
   }>
 ) {
   // Si se cambian fechas, re-verificar disponibilidad
-  if (data.checkInDate || data.checkOutDate) {
-    const current = await prisma.booking.findUnique({ where: { id } });
-    if (!current) throw new Error("Reserva no encontrada.");
+  const previous = await prisma.booking.findUnique({ where: { id } });
+  if (!previous) throw new Error("Reserva no encontrada.");
 
-    const checkIn = data.checkInDate ?? current.checkInDate;
-    const checkOut = data.checkOutDate ?? current.checkOutDate;
+  if (data.checkInDate || data.checkOutDate) {
+    const checkIn = data.checkInDate ?? previous.checkInDate;
+    const checkOut = data.checkOutDate ?? previous.checkOutDate;
 
     const isAvailable = await checkAvailability(
-      current.roomId,
+      previous.roomId,
       checkIn,
       checkOut,
       id // excluir la reserva actual del check
@@ -188,25 +221,56 @@ export async function updateBooking(
     }
   }
 
-  return prisma.booking.update({
+  const updated = await prisma.booking.update({
     where: { id },
     data,
     include: { guest: true, room: true },
   });
+
+  // Sincronizar el rango que cubre tanto las fechas antiguas como las nuevas
+  // (por si la reserva se movió, hay que liberar/ocupar ambos tramos).
+  const syncFrom = previous.checkInDate < updated.checkInDate ? previous.checkInDate : updated.checkInDate;
+  const syncTo = previous.checkOutDate > updated.checkOutDate ? previous.checkOutDate : updated.checkOutDate;
+  await pushAvailabilityAndRates(updated.roomId, syncFrom, syncTo);
+
+  return updated;
 }
 
 export async function cancelBooking(id: string) {
-  return prisma.booking.update({
+  const booking = await prisma.booking.update({
     where: { id },
     data: { status: BookingStatus.CANCELLED },
     include: { guest: true, room: true },
   });
+
+  await pushAvailabilityAndRates(booking.roomId, booking.checkInDate, booking.checkOutDate);
+
+  await sendEmail({
+    to: booking.guest.email,
+    subject: "Tu reserva ha sido cancelada",
+    react: BookingCancelledEmail({
+      guestFirstName: booking.guest.firstName,
+      roomName: booking.room.name,
+      checkInDate: formatDateLong(booking.checkInDate),
+      checkOutDate: formatDateLong(booking.checkOutDate),
+    }),
+  });
+
+  return booking;
 }
 
 export async function deleteBooking(id: string) {
+  const booking = await prisma.booking.findUnique({ where: { id } });
+
   // Eliminar facturas relacionadas primero
   await prisma.invoice.deleteMany({ where: { bookingId: id } });
-  return prisma.booking.delete({ where: { id } });
+  const deleted = await prisma.booking.delete({ where: { id } });
+
+  if (booking) {
+    await pushAvailabilityAndRates(booking.roomId, booking.checkInDate, booking.checkOutDate);
+  }
+
+  return deleted;
 }
 
 // ── Reservas próximas (Dashboard) ─────────────────────────────────────────
