@@ -6,6 +6,7 @@ import {
   getInvoiceById,
   markInvoiceAsPaid,
 } from "@/lib/services/invoice.service";
+import { PaymentMethod } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
 
 export async function GET(
@@ -48,7 +49,10 @@ export async function PATCH(
     const body = await request.json();
 
     if (body.isPaid === true) {
-      const invoice = await markInvoiceAsPaid(params.id);
+      const paymentMethod = Object.values(PaymentMethod).includes(body.paymentMethod)
+        ? (body.paymentMethod as PaymentMethod)
+        : undefined;
+      const invoice = await markInvoiceAsPaid(params.id, paymentMethod);
       return NextResponse.json({ data: invoice });
     }
 

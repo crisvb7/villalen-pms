@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { getQuoteById } from "@/lib/services/quote.service";
 import { InvoiceDocument } from "@/lib/pdf/invoice-document";
 import { renderPdfBuffer } from "@/lib/pdf/render";
+import { getHeroImage, getLogoImage } from "@/lib/pdf/assets";
 import { requireAuth } from "@/lib/auth";
 
 export async function GET(
@@ -36,6 +37,8 @@ export async function GET(
         pricePerNight: quote.pricePerNight.toString(),
         checkInDate: quote.checkInDate,
         checkOutDate: quote.checkOutDate,
+        heroImage: getHeroImage(),
+        logoImage: getLogoImage(),
       })
     );
 

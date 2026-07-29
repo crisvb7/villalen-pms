@@ -103,6 +103,13 @@ export const STATUS_COLORS: Record<string, string> = {
   CHECKED_OUT: "bg-stone-100 text-stone-600 border-stone-200",
 };
 
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH: "Efectivo",
+  CARD: "Tarjeta de crédito",
+  TRANSFER: "Transferencia",
+  OTHER: "Otro",
+};
+
 export const QUOTE_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Borrador",
   SENT: "Enviado",

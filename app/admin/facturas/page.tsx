@@ -2,7 +2,7 @@
 // app/admin/facturas/page.tsx
 
 import { Fragment, useEffect, useState } from "react";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, PAYMENT_METHOD_LABELS } from "@/lib/utils";
 
 interface InvoiceExtra {
   id: string;
@@ -16,6 +16,7 @@ interface Invoice {
   issueDate: string;
   total: string;
   isPaid: boolean;
+  paymentMethod: string | null;
   extras: InvoiceExtra[];
   booking: {
     checkInDate: string;
@@ -25,6 +26,8 @@ interface Invoice {
   };
 }
 
+const PAYMENT_METHOD_OPTIONS = ["CARD", "CASH", "TRANSFER", "OTHER"];
+
 export default function FacturasPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +36,7 @@ export default function FacturasPage() {
   const [extraForm, setExtraForm] = useState({ description: "", amount: "" });
   const [savingExtra, setSavingExtra] = useState(false);
   const [extraError, setExtraError] = useState<string | null>(null);
+  const [paymentSelection, setPaymentSelection] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchInvoices();
@@ -55,7 +59,7 @@ export default function FacturasPage() {
       await fetch(`/api/invoices/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPaid: true }),
+        body: JSON.stringify({ isPaid: true, paymentMethod: paymentSelection[id] ?? "CARD" }),
       });
       await fetchInvoices();
     } finally {
@@ -159,9 +163,14 @@ export default function FacturasPage() {
                       >
                         {invoice.isPaid ? "Pagada" : "Pendiente"}
                       </span>
+                      {invoice.isPaid && invoice.paymentMethod && (
+                        <p className="text-xs text-stone-400 mt-1">
+                          {PAYMENT_METHOD_LABELS[invoice.paymentMethod] ?? invoice.paymentMethod}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <a
                           href={`/api/invoices/${invoice.id}/pdf`}
                           target="_blank"
@@ -179,13 +188,28 @@ export default function FacturasPage() {
                             : "+ Añadir servicio (desayuno, etc.)"}
                         </button>
                         {!invoice.isPaid && (
-                          <button
-                            onClick={() => handleMarkPaid(invoice.id)}
-                            disabled={updating === invoice.id}
-                            className="text-xs bg-emerald-600 text-white px-2 py-1 hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                          >
-                            Marcar pagada
-                          </button>
+                          <>
+                            <select
+                              value={paymentSelection[invoice.id] ?? "CARD"}
+                              onChange={(e) =>
+                                setPaymentSelection((s) => ({ ...s, [invoice.id]: e.target.value }))
+                              }
+                              className="input text-xs py-1 px-2 w-auto"
+                            >
+                              {PAYMENT_METHOD_OPTIONS.map((m) => (
+                                <option key={m} value={m}>
+                                  {PAYMENT_METHOD_LABELS[m]}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleMarkPaid(invoice.id)}
+                              disabled={updating === invoice.id}
+                              className="text-xs bg-emerald-600 text-white px-2 py-1 hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                            >
+                              Marcar pagada
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>

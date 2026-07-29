@@ -113,6 +113,7 @@ model Invoice {
   pdfUrl    String?  // URL al PDF generado (almacenado externamente)
   invoiceNumber String @unique // Número de factura correlativo
   isPaid    Boolean  @default(false)
+  paymentMethod PaymentMethod? // Cómo se cobró (tarjeta, efectivo...); se fija al marcar como pagada
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

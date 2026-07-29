@@ -5,8 +5,10 @@
 
 import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
+import { PaymentMethod } from "@prisma/client";
 import { InvoiceDocument } from "@/lib/pdf/invoice-document";
 import { renderPdfBuffer } from "@/lib/pdf/render";
+import { getHeroImage, getLogoImage } from "@/lib/pdf/assets";
 import { sendEmail } from "@/lib/email/client";
 import { InvoiceEmail } from "@/lib/email/templates/InvoiceEmail";
 import { formatCurrency } from "@/lib/utils";
@@ -189,7 +191,6 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
     InvoiceDocument({
       documentTitle: "FACTURA",
       documentNumber: invoice.invoiceNumber,
-      bookingRef: booking.id,
       issueDate: invoice.issueDate,
       subtotal: invoice.subtotal.toString(),
       tax: invoice.tax.toString(),
@@ -201,8 +202,6 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
         phone: booking.guest.phone,
       },
       roomName: booking.room.name,
-      adults: booking.adults,
-      children: booking.children,
       pricePerNight,
       accommodationTotal: accommodationTotal.toFixed(2),
       checkInDate: booking.checkInDate,
@@ -213,14 +212,17 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
         date: e.createdAt,
       })),
       isPaid: invoice.isPaid,
+      paymentMethod: invoice.paymentMethod ?? undefined,
+      heroImage: getHeroImage(),
+      logoImage: getLogoImage(),
     })
   );
 }
 
-export async function markInvoiceAsPaid(id: string) {
+export async function markInvoiceAsPaid(id: string, paymentMethod?: PaymentMethod) {
   const invoice = await prisma.invoice.update({
     where: { id },
-    data: { isPaid: true },
+    data: { isPaid: true, paymentMethod: paymentMethod ?? PaymentMethod.OTHER },
   });
 
   // Actualizar también el depositPaid en la reserva

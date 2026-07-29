@@ -1,125 +1,160 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import { ESTABLISHMENT } from "@/lib/establishment";
-import { formatDate, formatCurrency, getNights } from "@/lib/utils";
+import { formatDate, formatCurrency, getNights, PAYMENT_METHOD_LABELS } from "@/lib/utils";
 
-const INK = "#1c1917"; // stone-900
-const MUTED = "#78716c"; // stone-500
-const FAINT = "#a8a29e"; // stone-400
-const ACCENT = "#b45309"; // amber-700
-const LINE = "#e7e5e4"; // stone-200
-const PANEL = "#f5f5f4"; // stone-100
+const GREEN = "#3F4A34"; // verde-monte, color real de la marca Villalén
+const GREEN_LIGHT = "#E3E8DA";
+const CREAM = "#F4F1EA"; // hueso
+const CREAM_DIM = "#E2DDD1"; // hueso-dim
+const INK = "#1C1E17"; // carbon
+const MUTED = "#6B7263";
+const LINE = "#D8D2C4";
 
 const styles = StyleSheet.create({
-  page: { padding: 40, paddingBottom: 56, fontSize: 9, fontFamily: "Helvetica", color: "#292524" },
+  page: { fontSize: 9.5, fontFamily: "Helvetica", color: INK, backgroundColor: CREAM },
 
-  // ── Cabecera ──────────────────────────────────────────────────────────
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 14 },
-  hotelName: { fontFamily: "Times-Bold", fontSize: 23, color: INK },
-  hotelSubtitle: {
-    fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
-    textTransform: "uppercase",
-    letterSpacing: 1.4,
-    color: ACCENT,
-    marginTop: 3,
-    marginBottom: 8,
+  // ── Cabecera con foto ──────────────────────────────────────────────────
+  heroWrap: { height: 132, position: "relative" },
+  heroImage: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%", objectFit: "cover" },
+  heroOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: GREEN, opacity: 0.8 },
+  heroContent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 22,
   },
-  contactLine: { fontSize: 8, color: MUTED, lineHeight: 1.5 },
+  logoBadge: { backgroundColor: "#ffffff", borderRadius: 6, padding: 6, alignSelf: "flex-start" },
+  logoImage: { width: 92, height: 40, objectFit: "contain" },
+  heroSubtitle: {
+    marginTop: 7,
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+    color: "#E4E9D9",
+  },
 
   headerRight: { alignItems: "flex-end" },
-  badge: {
-    backgroundColor: INK,
-    color: "#ffffff",
+  statusPillPaid: {
+    backgroundColor: "#ffffff",
+    color: GREEN,
     fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     textTransform: "uppercase",
-    letterSpacing: 1.2,
+    letterSpacing: 1,
+    borderRadius: 10,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
-  docNumber: { fontFamily: "Times-Bold", fontSize: 15, color: INK, marginTop: 8, marginBottom: 6 },
-  metaRow: { flexDirection: "row", marginBottom: 2 },
-  metaLabel: { fontSize: 7.5, color: FAINT, textTransform: "uppercase", letterSpacing: 0.5, marginRight: 8 },
-  metaValue: { fontSize: 8.5, color: "#44403c" },
+  statusPillPending: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    color: "#ffffff",
+    fontSize: 7.5,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  docTitle: { fontFamily: "Times-Italic", fontSize: 20, color: "#ffffff", marginTop: 8 },
+  docNumber: { fontSize: 9, color: "#D7DEC6", marginTop: 2 },
 
-  headerDivider: { borderBottom: `1.5 solid ${INK}`, marginBottom: 18 },
+  // ── Barra de datos fiscales ─────────────────────────────────────────────
+  infoBar: { backgroundColor: GREEN, paddingHorizontal: 24, paddingVertical: 10 },
+  infoRow: { flexDirection: "row", flexWrap: "wrap", gap: 22, marginBottom: 4 },
+  infoItem: { flexDirection: "row" },
+  infoLabel: { fontSize: 8, color: "#AEB89D", marginRight: 4 },
+  infoValue: { fontSize: 8.5, color: "#ffffff" },
 
-  // ── Bloques huésped / estancia ───────────────────────────────────────
-  twoCol: { flexDirection: "row", marginBottom: 20 },
-  col: { flex: 1 },
+  // ── Cuerpo ──────────────────────────────────────────────────────────────
+  body: { flex: 1, padding: 28 },
+  twoCol: { flexDirection: "row", justifyContent: "space-between", marginBottom: 14 },
+  colLabel: {
+    fontSize: 7.5,
+    fontFamily: "Helvetica-Bold",
+    color: GREEN,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+    marginBottom: 6,
+  },
+  clientName: { fontFamily: "Times-Bold", fontSize: 15, color: INK, marginBottom: 4 },
+  clientLine: { fontSize: 8.5, color: MUTED, marginBottom: 2 },
+  paymentValue: { fontSize: 10, color: INK },
+  paymentPending: { fontSize: 9, color: MUTED, fontStyle: "italic" },
+
+  divider: { borderBottom: `1 solid ${LINE}`, marginBottom: 16 },
+
   sectionLabel: {
     fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
-    color: ACCENT,
+    color: GREEN,
     textTransform: "uppercase",
-    letterSpacing: 1.2,
-    marginBottom: 7,
+    letterSpacing: 1.1,
+    marginTop: 18,
+    marginBottom: 6,
   },
-  guestName: { fontFamily: "Times-Bold", fontSize: 12.5, color: INK, marginBottom: 4 },
-  guestLine: { fontSize: 8.5, color: MUTED, marginBottom: 2 },
-  detailRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, paddingRight: 4 },
-  detailLabel: { fontSize: 8, color: FAINT },
-  detailValue: { fontSize: 8.5, color: "#44403c", textAlign: "right" },
+  tableHeader: { flexDirection: "row", backgroundColor: GREEN, paddingVertical: 7, paddingHorizontal: 10 },
+  th: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#ffffff", textTransform: "uppercase", letterSpacing: 0.6 },
+  tableRow: { flexDirection: "row", paddingVertical: 9, paddingHorizontal: 10, borderBottom: `1 solid ${LINE}` },
+  colDesc: { flex: 2.4 },
+  colDate: { flex: 1.5, textAlign: "center" },
+  colNights: { flex: 0.8, textAlign: "center" },
+  colRate: { flex: 1.1, textAlign: "right" },
+  colAmount: { flex: 1.1, textAlign: "right", fontFamily: "Helvetica-Bold" },
 
-  // ── Tablas ────────────────────────────────────────────────────────────
-  section: { marginBottom: 16 },
-  tableHeader: {
-    flexDirection: "row",
-    borderBottom: `1 solid ${INK}`,
-    paddingBottom: 4,
-    marginBottom: 4,
-  },
-  th: { fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.6, color: FAINT },
-  row: { flexDirection: "row", paddingVertical: 5, borderBottom: `1 solid ${LINE}` },
-  colDesc: { flex: 2.6 },
-  colDate: { flex: 1.3, textAlign: "center" },
-  colNights: { flex: 0.7, textAlign: "center" },
-  colRate: { flex: 1, textAlign: "right" },
-  colAmount: { flex: 1, textAlign: "right" },
-  subtotalRow: {
+  // ── Totales ─────────────────────────────────────────────────────────────
+  totals: { marginTop: 18, alignSelf: "flex-end", width: 260 },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3, fontSize: 9.5 },
+  totalBox: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: PANEL,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    marginTop: 2,
+    alignItems: "center",
+    backgroundColor: GREEN,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 4,
   },
-  subtotalLabel: { fontSize: 8.5, color: MUTED },
-  subtotalValue: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: INK },
-
-  // ── Totales ───────────────────────────────────────────────────────────
-  totals: { marginTop: 10, alignSelf: "flex-end", width: 230 },
-  totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3, fontSize: 9 },
-  totalFinal: {
+  totalBoxLabel: { fontFamily: "Times-Italic", fontSize: 13, color: "#ffffff" },
+  totalBoxValue: { fontFamily: "Helvetica-Bold", fontSize: 16, color: "#ffffff" },
+  statusBar: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: INK,
-    color: "#ffffff",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginTop: 6,
-    fontSize: 12,
-    fontFamily: "Helvetica-Bold",
+    backgroundColor: GREEN_LIGHT,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
   },
-  statusLine: { fontSize: 8, textAlign: "right", marginTop: 6 },
+  statusBarLabel: { fontSize: 8.5, color: GREEN, fontFamily: "Helvetica-Bold" },
+  statusBarValue: { fontSize: 8.5, color: INK, fontFamily: "Helvetica-Bold" },
+
+  note: { marginTop: 22, backgroundColor: CREAM_DIM, borderLeft: `3 solid ${GREEN}`, padding: 12 },
+  noteText: { fontFamily: "Times-Italic", fontSize: 9.5, color: "#3D4536", lineHeight: 1.4 },
+
+  // ── Pie de página ───────────────────────────────────────────────────────
+  footer: {
+    borderTop: `1 solid ${LINE}`,
+    backgroundColor: CREAM_DIM,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  footerLeft: { flexDirection: "row", alignItems: "center" },
+  footerLogoBadge: { backgroundColor: "#ffffff", borderRadius: 4, padding: 4, marginRight: 8 },
+  footerLogoImage: { width: 62, height: 27, objectFit: "contain" },
+  footerName: { fontFamily: "Helvetica-Bold", fontSize: 9, color: GREEN },
+  footerTagline: { fontSize: 7.5, color: MUTED, marginTop: 1 },
+  footerRight: { fontSize: 7.5, color: MUTED },
 });
-
-function capitalize(s: string): string {
-  return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
-
-function formatDayLine(date: Date | string, time?: string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const dayDate = capitalize(format(d, "EEEE d 'de' MMMM 'de' yyyy", { locale: es }));
-  return time ? `${dayDate} · ${time} h` : dayDate;
-}
 
 export interface InvoicePdfProps {
   documentTitle: string; // "FACTURA" o "PRESUPUESTO"
   documentNumber: string;
-  bookingRef?: string; // referencia corta de la reserva (facturas)
   issueDate: Date | string;
   validUntil?: Date | string;
   subtotal: number | string;
@@ -127,165 +162,200 @@ export interface InvoicePdfProps {
   total: number | string;
   client: { name: string; documentId?: string; email: string; phone?: string | null };
   roomName: string;
-  adults?: number;
-  children?: number;
   pricePerNight: number | string;
   accommodationTotal?: number | string; // si falta, se asume que el total es solo alojamiento
   checkInDate: Date | string;
   checkOutDate: Date | string;
   extras?: { description: string; amount: number | string; date: Date | string }[];
   isPaid?: boolean;
+  paymentMethod?: string; // CASH | CARD | TRANSFER | OTHER
+  heroImage?: Buffer;
+  logoImage?: Buffer;
 }
 
 export function InvoiceDocument(props: InvoicePdfProps) {
   const nights = getNights(props.checkInDate, props.checkOutDate);
   const accommodationTotal = props.accommodationTotal ?? props.total;
   const extras = props.extras ?? [];
-  const extrasTotal = extras.reduce((sum, e) => sum + parseFloat(e.amount.toString()), 0);
+  const paymentMethodLabel = props.paymentMethod
+    ? PAYMENT_METHOD_LABELS[props.paymentMethod] ?? props.paymentMethod
+    : undefined;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* ── Cabecera ── */}
-        <View style={styles.header}>
-          <View style={{ maxWidth: 300 }}>
-            <Text style={styles.hotelName}>{ESTABLISHMENT.name}</Text>
-            <Text style={styles.hotelSubtitle}>
-              Casa de aldea · {ESTABLISHMENT.municipality}, {ESTABLISHMENT.province}
-            </Text>
-            <Text style={styles.contactLine}>{ESTABLISHMENT.address}</Text>
-            <Text style={styles.contactLine}>
-              {[ESTABLISHMENT.phone, ESTABLISHMENT.email].filter(Boolean).join(" · ")}
-            </Text>
-            <Text style={styles.contactLine}>NIF: {ESTABLISHMENT.cif}</Text>
+        <View style={styles.heroWrap}>
+          {props.heroImage && <Image src={props.heroImage} style={styles.heroImage} />}
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroContent}>
+            <View>
+              {props.logoImage && (
+                <View style={styles.logoBadge}>
+                  <Image src={props.logoImage} style={styles.logoImage} />
+                </View>
+              )}
+              <Text style={styles.heroSubtitle}>
+                Casa de aldea · {ESTABLISHMENT.municipality} · {ESTABLISHMENT.province}
+              </Text>
+            </View>
+            <View style={styles.headerRight}>
+              {props.isPaid !== undefined && (
+                <Text style={props.isPaid ? styles.statusPillPaid : styles.statusPillPending}>
+                  {props.isPaid ? "Pagada" : "Pendiente de pago"}
+                </Text>
+              )}
+              <Text style={styles.docTitle}>
+                {props.documentTitle.charAt(0)}
+                {props.documentTitle.slice(1).toLowerCase()}
+              </Text>
+              <Text style={styles.docNumber}>{props.documentNumber}</Text>
+            </View>
           </View>
+        </View>
 
-          <View style={styles.headerRight}>
-            <Text style={styles.badge}>{props.documentTitle}</Text>
-            <Text style={styles.docNumber}>{props.documentNumber}</Text>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Fecha emisión</Text>
-              <Text style={styles.metaValue}>{formatDate(props.issueDate, "d 'de' MMMM 'de' yyyy")}</Text>
+        {/* ── Datos fiscales ── */}
+        <View style={styles.infoBar}>
+          <View style={styles.infoRow}>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Fecha</Text>
+              <Text style={styles.infoValue}>{formatDate(props.issueDate)}</Text>
             </View>
             {props.validUntil && (
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Válido hasta</Text>
-                <Text style={styles.metaValue}>{formatDate(props.validUntil, "d 'de' MMMM 'de' yyyy")}</Text>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Válido hasta</Text>
+                <Text style={styles.infoValue}>{formatDate(props.validUntil)}</Text>
               </View>
             )}
-            {props.bookingRef && (
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Referencia</Text>
-                <Text style={styles.metaValue}>{props.bookingRef.slice(-6).toUpperCase()}</Text>
-              </View>
-            )}
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>CIF</Text>
+              <Text style={styles.infoValue}>{ESTABLISHMENT.cif}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Dirección</Text>
+              <Text style={styles.infoValue}>
+                {ESTABLISHMENT.address}, {ESTABLISHMENT.municipality}, {ESTABLISHMENT.province}
+              </Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.headerDivider} />
-
-        {/* ── Huésped / Estancia ── */}
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <Text style={styles.sectionLabel}>Huésped</Text>
-            <Text style={styles.guestName}>{props.client.name}</Text>
-            {props.client.documentId && <Text style={styles.guestLine}>{props.client.documentId}</Text>}
-            <Text style={styles.guestLine}>{props.client.email}</Text>
-            {props.client.phone && <Text style={styles.guestLine}>{props.client.phone}</Text>}
-          </View>
-
-          <View style={styles.col}>
-            <Text style={styles.sectionLabel}>Detalles de la estancia</Text>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Habitación</Text>
-              <Text style={styles.detailValue}>{props.roomName}</Text>
-            </View>
-            {props.adults !== undefined && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Ocupación</Text>
-                <Text style={styles.detailValue}>
-                  {props.adults} adulto{props.adults !== 1 ? "s" : ""}
-                  {props.children ? `, ${props.children} niño${props.children !== 1 ? "s" : ""}` : ""}
-                </Text>
-              </View>
-            )}
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Check-in</Text>
-              <Text style={styles.detailValue}>{formatDayLine(props.checkInDate, ESTABLISHMENT.checkInTime)}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Check-out</Text>
-              <Text style={styles.detailValue}>{formatDayLine(props.checkOutDate, ESTABLISHMENT.checkOutTime)}</Text>
-            </View>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Email</Text>
+            <Text style={styles.infoValue}>{ESTABLISHMENT.email}</Text>
           </View>
         </View>
 
-        {/* ── Alojamiento ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Alojamiento</Text>
+        {/* ── Cuerpo ── */}
+        <View style={styles.body}>
+          <View style={styles.twoCol}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.colLabel}>Cliente</Text>
+              <Text style={styles.clientName}>{props.client.name}</Text>
+              {props.client.documentId && (
+                <Text style={styles.clientLine}>DNI / NIF: {props.client.documentId}</Text>
+              )}
+              <Text style={styles.clientLine}>{props.client.email}</Text>
+            </View>
+            {props.isPaid !== undefined && (
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={styles.colLabel}>Método de pago</Text>
+                {paymentMethodLabel ? (
+                  <Text style={styles.paymentValue}>{paymentMethodLabel}</Text>
+                ) : (
+                  <Text style={styles.paymentPending}>Pendiente de pago</Text>
+                )}
+              </View>
+            )}
+          </View>
+          <View style={styles.divider} />
+
+          {/* Alojamiento */}
           <View style={styles.tableHeader}>
             <Text style={[styles.th, styles.colDesc]}>Concepto</Text>
             <Text style={[styles.th, styles.colDate]}>Fechas</Text>
             <Text style={[styles.th, styles.colNights]}>Noches</Text>
-            <Text style={[styles.th, styles.colRate]}>Tarifa/noche</Text>
+            <Text style={[styles.th, styles.colRate]}>Precio/noche</Text>
             <Text style={[styles.th, styles.colAmount]}>Importe</Text>
           </View>
-          <View style={styles.row}>
+          <View style={styles.tableRow}>
             <Text style={styles.colDesc}>{props.roomName}</Text>
             <Text style={styles.colDate}>
-              {formatDate(props.checkInDate, "dd/MM")} - {formatDate(props.checkOutDate, "dd/MM/yyyy")}
+              {formatDate(props.checkInDate)} - {formatDate(props.checkOutDate)}
             </Text>
             <Text style={styles.colNights}>{nights}</Text>
             <Text style={styles.colRate}>{formatCurrency(props.pricePerNight)}</Text>
             <Text style={styles.colAmount}>{formatCurrency(accommodationTotal)}</Text>
           </View>
-          <View style={styles.subtotalRow}>
-            <Text style={styles.subtotalLabel}>Subtotal alojamiento</Text>
-            <Text style={styles.subtotalValue}>{formatCurrency(accommodationTotal)}</Text>
+
+          {/* Servicios adicionales */}
+          {extras.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>Servicios adicionales</Text>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.th, styles.colDesc]}>Descripción</Text>
+                <Text style={[styles.th, styles.colDate]}>Fecha</Text>
+                <Text style={[styles.th, styles.colAmount]}>Importe</Text>
+              </View>
+              {extras.map((extra, i) => (
+                <View style={styles.tableRow} key={i}>
+                  <Text style={styles.colDesc}>{extra.description}</Text>
+                  <Text style={styles.colDate}>{formatDate(extra.date)}</Text>
+                  <Text style={styles.colAmount}>{formatCurrency(extra.amount)}</Text>
+                </View>
+              ))}
+            </>
+          )}
+
+          {/* Totales */}
+          <View style={styles.totals}>
+            <View style={styles.totalRow}>
+              <Text>Base imponible</Text>
+              <Text>{formatCurrency(props.subtotal)}</Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text>IVA (10%)</Text>
+              <Text>{formatCurrency(props.tax)}</Text>
+            </View>
+            <View style={styles.totalBox}>
+              <Text style={styles.totalBoxLabel}>Total</Text>
+              <Text style={styles.totalBoxValue}>{formatCurrency(props.total)}</Text>
+            </View>
+            {props.isPaid !== undefined && (
+              <View style={styles.statusBar}>
+                <Text style={styles.statusBarLabel}>{props.isPaid ? "Pagada" : "Pendiente de pago"}</Text>
+                {paymentMethodLabel && <Text style={styles.statusBarValue}>{paymentMethodLabel}</Text>}
+              </View>
+            )}
           </View>
+
+          {/* Nota de agradecimiento */}
+          {props.documentTitle === "FACTURA" && (
+            <View style={styles.note}>
+              <Text style={styles.noteText}>
+                Gracias por elegir {ESTABLISHMENT.name}. Esperamos que su estancia haya sido de su agrado. Le
+                esperamos de nuevo en {ESTABLISHMENT.province}.
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* ── Servicios adicionales ── */}
-        {extras.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Servicios adicionales</Text>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.th, styles.colDesc]}>Descripción</Text>
-              <Text style={[styles.th, styles.colDate]}>Fecha</Text>
-              <Text style={[styles.th, styles.colAmount]}>Importe</Text>
-            </View>
-            {extras.map((extra, i) => (
-              <View style={styles.row} key={i}>
-                <Text style={styles.colDesc}>{extra.description}</Text>
-                <Text style={styles.colDate}>{formatDate(extra.date)}</Text>
-                <Text style={styles.colAmount}>{formatCurrency(extra.amount)}</Text>
+        {/* ── Pie de página ── */}
+        <View style={styles.footer}>
+          <View style={styles.footerLeft}>
+            {props.logoImage && (
+              <View style={styles.footerLogoBadge}>
+                <Image src={props.logoImage} style={styles.footerLogoImage} />
               </View>
-            ))}
-            <View style={styles.subtotalRow}>
-              <Text style={styles.subtotalLabel}>Subtotal servicios</Text>
-              <Text style={styles.subtotalValue}>{formatCurrency(extrasTotal)}</Text>
+            )}
+            <View>
+              <Text style={styles.footerName}>{ESTABLISHMENT.name}</Text>
+              <Text style={styles.footerTagline}>
+                Casa de aldea · {ESTABLISHMENT.municipality}, {ESTABLISHMENT.province}
+              </Text>
             </View>
           </View>
-        )}
-
-        {/* ── Totales ── */}
-        <View style={styles.totals}>
-          <View style={styles.totalRow}>
-            <Text>Base imponible</Text>
-            <Text>{formatCurrency(props.subtotal)}</Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text>IVA (10%)</Text>
-            <Text>{formatCurrency(props.tax)}</Text>
-          </View>
-          <View style={styles.totalFinal}>
-            <Text>TOTAL</Text>
-            <Text>{formatCurrency(props.total)}</Text>
-          </View>
-          {props.isPaid !== undefined && (
-            <Text style={[styles.statusLine, { color: props.isPaid ? "#059669" : MUTED }]}>
-              {props.isPaid ? "Pagada" : "Pendiente de pago"}
-            </Text>
-          )}
+          <Text style={styles.footerRight}>
+            {props.documentNumber} · {ESTABLISHMENT.cif} · {ESTABLISHMENT.email}
+          </Text>
         </View>
       </Page>
     </Document>
