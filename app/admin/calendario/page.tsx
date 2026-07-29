@@ -4,8 +4,7 @@
 import { useEffect, useState, type DragEvent } from "react";
 import {
   format,
-  startOfMonth,
-  endOfMonth,
+  startOfWeek,
   eachDayOfInterval,
   isToday,
   isWeekend,
@@ -14,8 +13,7 @@ import {
   isBefore,
   startOfDay,
   addDays,
-  addMonths,
-  subMonths,
+  subDays,
   differenceInDays,
 } from "date-fns";
 import { es } from "date-fns/locale";
@@ -60,13 +58,16 @@ const EMPTY_FORM = {
   children: 0,
 };
 
+const WINDOW_DAYS = 7;
+
 export default function CalendarioPage() {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [viewStart, setViewStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<Date | null>(null);
   const [banner, setBanner] = useState<{ type: "error" | "success"; message: string } | null>(null);
 
   const [quickCreate, setQuickCreate] = useState<QuickCreateTarget | null>(null);
@@ -96,9 +97,7 @@ export default function CalendarioPage() {
     return () => clearTimeout(t);
   }, [banner]);
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const days = eachDayOfInterval({ start: viewStart, end: addDays(viewStart, WINDOW_DAYS - 1) });
 
   const getBooking = (day: Date, roomId: string) => {
     const d = startOfDay(day);
@@ -250,22 +249,22 @@ export default function CalendarioPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+            onClick={() => setViewStart(subDays(viewStart, WINDOW_DAYS))}
             className="btn-ghost"
           >
-            ← Anterior
+            ← Semana anterior
           </button>
-          <span className="font-serif text-lg text-stone-700 capitalize min-w-[180px] text-center">
-            {format(currentMonth, "MMMM yyyy", { locale: es })}
+          <span className="font-serif text-lg text-stone-700 capitalize min-w-[220px] text-center">
+            {format(days[0], "d MMM", { locale: es })} – {format(days[days.length - 1], "d MMM yyyy", { locale: es })}
           </span>
           <button
-            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+            onClick={() => setViewStart(addDays(viewStart, WINDOW_DAYS))}
             className="btn-ghost"
           >
-            Siguiente →
+            Semana siguiente →
           </button>
           <button
-            onClick={() => setCurrentMonth(new Date())}
+            onClick={() => setViewStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
             className="btn-secondary text-xs px-3 py-2"
           >
             Hoy
@@ -329,21 +328,29 @@ export default function CalendarioPage() {
                   </th>
                   {days.map((day) => {
                     const today = isToday(day);
+                    const isHovered = hoveredDay ? isSameDay(hoveredDay, day) : false;
                     return (
                       <th
                         key={day.toISOString()}
+                        onMouseEnter={() => setHoveredDay(day)}
+                        onMouseLeave={() => setHoveredDay(null)}
                         className={cn(
-                          "sticky top-0 z-10 border-b py-2 text-center text-xs font-medium w-[34px] min-w-[34px]",
+                          "sticky top-0 z-10 border-b py-2 text-center text-xs font-medium w-[150px] min-w-[150px] transition-colors",
                           today
-                            ? "bg-violet-600 border-violet-600"
-                            : cn("border-stone-100", isWeekend(day) ? "bg-stone-100" : "bg-stone-50")
+                            ? isHovered
+                              ? "bg-violet-700 border-violet-700"
+                              : "bg-violet-600 border-violet-600"
+                            : cn(
+                                "border-stone-100",
+                                isHovered ? "bg-stone-200" : isWeekend(day) ? "bg-stone-100" : "bg-stone-50"
+                              )
                         )}
                       >
                         <span className={cn("block text-[9px] uppercase", today ? "text-violet-100" : "text-stone-400")}>
-                          {format(day, "EEEEE", { locale: es })}
+                          {format(day, "EEEE", { locale: es })}
                         </span>
                         <span className={cn("font-semibold", today ? "text-white" : "text-stone-600 font-normal")}>
-                          {format(day, "d")}
+                          {format(day, "d 'de' MMM", { locale: es })}
                         </span>
                       </th>
                     );
@@ -360,6 +367,7 @@ export default function CalendarioPage() {
                     {days.map((day) => {
                       const booking = getBooking(day, room.id);
                       const today = isToday(day);
+                      const isHovered = hoveredDay ? isSameDay(hoveredDay, day) : false;
                       const isDragTarget = editMode && draggingId && (!booking || booking.id === draggingId);
                       return (
                         <td
@@ -369,11 +377,14 @@ export default function CalendarioPage() {
                           onClick={() => {
                             if (!booking) openQuickCreate(room, day);
                           }}
+                          onMouseEnter={() => setHoveredDay(day)}
+                          onMouseLeave={() => setHoveredDay(null)}
                           className={cn(
-                            "border-b border-r p-0.5 text-center",
+                            "border-b border-r p-0.5 text-center transition-colors",
                             today ? "border-l-2 border-r-2 border-l-violet-300 border-r-violet-300 bg-violet-50/50" : "border-stone-50",
-                            !booking && "cursor-pointer hover:bg-emerald-50/60",
-                            !booking && isWeekend(day) && !today && "bg-stone-50/60",
+                            !booking && "cursor-pointer",
+                            !booking && !isHovered && isWeekend(day) && !today && "bg-stone-50/60",
+                            isHovered && (today ? "bg-violet-100" : "bg-stone-200/70"),
                             isDragTarget && !booking && "bg-emerald-50 outline outline-1 outline-emerald-300"
                           )}
                         >
@@ -386,7 +397,7 @@ export default function CalendarioPage() {
                               }}
                               onDragEnd={() => setDraggingId(null)}
                               className={cn(
-                                "h-6 border text-[9px] leading-6 truncate",
+                                "h-8 border px-1.5 text-xs leading-8 truncate text-left",
                                 STATUS_BG[booking.status] ?? "bg-stone-100 border-stone-300",
                                 editMode && "cursor-grab active:cursor-grabbing",
                                 draggingId === booking.id && "opacity-40"
@@ -396,10 +407,10 @@ export default function CalendarioPage() {
                                 "dd/MM"
                               )} - ${format(parseISO(booking.checkOutDate), "dd/MM")}`}
                             >
-                              {booking.guest.lastName.charAt(0)}
+                              {booking.guest.firstName} {booking.guest.lastName}
                             </div>
                           ) : (
-                            <div className="h-6" />
+                            <div className="h-8" />
                           )}
                         </td>
                       );
