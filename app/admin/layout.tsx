@@ -2,11 +2,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import AdminProviders from "./providers";
+
+interface PendingAssignmentBooking {
+  id: string;
+  checkInDate: string;
+  guest: { firstName: string; lastName: string };
+}
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "⬛", exact: true },
@@ -38,6 +44,15 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
+  const [pendingBookings, setPendingBookings] = useState<PendingAssignmentBooking[]>([]);
+
+  useEffect(() => {
+    if (pathname === "/admin/login") return;
+    fetch("/api/bookings/pending-assignment")
+      .then((r) => r.json())
+      .then((data) => setPendingBookings(data.data ?? []))
+      .catch(() => {});
+  }, [pathname]);
 
   // La pantalla de login no lleva el sidebar/backoffice alrededor.
   if (pathname === "/admin/login") {
@@ -85,6 +100,7 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
             const isActive = item.exact
               ? pathname === item.href
               : pathname.startsWith(item.href);
+            const showBadge = item.href === "/admin/reservas" && pendingBookings.length > 0;
 
             return (
               <Link
@@ -92,7 +108,7 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 py-2.5 text-sm rounded-xl transition-all",
+                  "flex items-center gap-3 py-2.5 text-sm rounded-xl transition-all relative",
                   collapsed ? "px-0 justify-center" : "px-4",
                   isActive
                     ? "bg-villalen-600 text-white shadow-sm"
@@ -101,6 +117,16 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
               >
                 <span className="text-base">{item.icon}</span>
                 {!collapsed && item.label}
+                {showBadge && (
+                  <span
+                    className={cn(
+                      "flex items-center justify-center rounded-full bg-terracotta-500 text-white text-[10px] font-semibold",
+                      collapsed ? "absolute -top-1 -right-1 w-4 h-4" : "ml-auto w-5 h-5"
+                    )}
+                  >
+                    {pendingBookings.length}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -155,6 +181,23 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
+
+        {pendingBookings.length > 0 && (
+          <div className="bg-amber-50 border-b border-amber-200 px-8 py-2.5 flex items-center gap-3 overflow-x-auto">
+            <span className="text-xs font-medium text-amber-800 flex-shrink-0">
+              🛎️ {pendingBookings.length} reserva(s) web sin habitación asignada:
+            </span>
+            {pendingBookings.map((b) => (
+              <Link
+                key={b.id}
+                href={`/admin/calendario?assignBookingId=${b.id}`}
+                className="chip bg-white text-amber-800 border-amber-200 hover:bg-amber-100 flex-shrink-0 text-xs"
+              >
+                {b.guest.firstName} {b.guest.lastName} · {formatDate(b.checkInDate)} →
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Page content */}
         <main className="flex-1 p-8 overflow-auto">{children}</main>
