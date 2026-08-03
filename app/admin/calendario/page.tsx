@@ -1,7 +1,8 @@
 // app/admin/calendario/page.tsx
 "use client";
 
-import { useEffect, useState, type DragEvent } from "react";
+import { Suspense, useEffect, useState, type DragEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   format,
   startOfWeek,
@@ -17,22 +18,24 @@ import {
   differenceInDays,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, ROOM_TYPE_LABELS } from "@/lib/utils";
 
 interface Booking {
   id: string;
   checkInDate: string;
   checkOutDate: string;
   status: string;
+  roomType: string;
   guest: { firstName: string; lastName: string };
   room: { name: string };
-  roomId: string;
+  roomId: string | null;
 }
 
 interface Room {
   id: string;
   name: string;
   capacity: number;
+  type: string;
 }
 
 interface QuickCreateTarget {
@@ -60,7 +63,7 @@ const EMPTY_FORM = {
 
 const WINDOW_DAYS = 7;
 
-export default function CalendarioPage() {
+function CalendarioPageContent() {
   const [viewStart, setViewStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -68,6 +71,16 @@ export default function CalendarioPage() {
   const [editMode, setEditMode] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ type: "error" | "success"; message: string } | null>(null);
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const assignBookingId = searchParams.get("assignBookingId");
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
+  const assigningBooking = assignBookingId
+    ? bookings.find((b) => b.id === assignBookingId) ?? null
+    : null;
 
   const [quickCreate, setQuickCreate] = useState<QuickCreateTarget | null>(null);
   const [checkInInput, setCheckInInput] = useState("");
@@ -91,6 +104,13 @@ export default function CalendarioPage() {
   }, []);
 
   useEffect(() => {
+    if (assigningBooking) {
+      setViewStart(startOfWeek(parseISO(assigningBooking.checkInDate), { weekStartsOn: 1 }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assigningBooking?.id]);
+
+  useEffect(() => {
     if (!banner) return;
     const t = setTimeout(() => setBanner(null), 4000);
     return () => clearTimeout(t);
@@ -106,6 +126,55 @@ export default function CalendarioPage() {
       const co = startOfDay(parseISO(b.checkOutDate));
       return !isBefore(d, ci) && isBefore(d, co);
     });
+  };
+
+  const isRoomEligibleForAssignment = (room: Room) => {
+    if (!assigningBooking) return false;
+    if (room.type !== assigningBooking.roomType) return false;
+
+    const aCheckIn = startOfDay(parseISO(assigningBooking.checkInDate));
+    const aCheckOut = startOfDay(parseISO(assigningBooking.checkOutDate));
+
+    const hasConflict = bookings.some((b) => {
+      if (b.id === assigningBooking.id) return false;
+      if (b.roomId !== room.id) return false;
+      const ci = startOfDay(parseISO(b.checkInDate));
+      const co = startOfDay(parseISO(b.checkOutDate));
+      return aCheckIn < co && aCheckOut > ci;
+    });
+
+    return !hasConflict;
+  };
+
+  const cancelAssignment = () => {
+    setAssignError(null);
+    router.replace("/admin/calendario");
+  };
+
+  const handleAssignRoom = async (room: Room) => {
+    if (!assigningBooking) return;
+    setAssigning(true);
+    setAssignError(null);
+    try {
+      const res = await fetch(`/api/bookings/${assigningBooking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: room.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAssignError(data.error ?? "No se pudo asignar la habitación.");
+        return;
+      }
+      setBanner({
+        type: "success",
+        message: `${room.name} asignada a ${assigningBooking.guest.firstName} ${assigningBooking.guest.lastName}.`,
+      });
+      router.replace("/admin/calendario");
+      await loadData();
+    } finally {
+      setAssigning(false);
+    }
   };
 
   // ── Alta rápida (clic en celda libre) ────────────────────────────────────
@@ -299,6 +368,23 @@ export default function CalendarioPage() {
         ))}
       </div>
 
+      {assigningBooking && (
+        <div className="mb-4 rounded-xl px-4 py-3 bg-violet-50 border border-violet-200 flex items-center justify-between gap-3">
+          <p className="text-sm text-violet-900">
+            Asignando habitación (<strong>{ROOM_TYPE_LABELS[assigningBooking.roomType]}</strong>)
+            para <strong>{assigningBooking.guest.firstName} {assigningBooking.guest.lastName}</strong> —
+            haz clic en una celda libre resaltada en verde.
+          </p>
+          <button onClick={cancelAssignment} className="btn-ghost text-sm flex-shrink-0" disabled={assigning}>
+            Cancelar
+          </button>
+        </div>
+      )}
+      {assignError && (
+        <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-xl">
+          {assignError}
+        </p>
+      )}
       {banner && (
         <div
           className={cn(
@@ -363,21 +449,31 @@ export default function CalendarioPage() {
                       const booking = getBooking(day, room.id);
                       const today = isToday(day);
                       const isDragTarget = editMode && draggingId && (!booking || booking.id === draggingId);
+                      const isAssignTarget = Boolean(assigningBooking) && isRoomEligibleForAssignment(room);
+                      const isAssignBlocked = Boolean(assigningBooking) && !isAssignTarget;
                       return (
                         <td
                           key={day.toISOString()}
                           onDragOver={(e) => handleDragOver(e, room, day)}
                           onDrop={(e) => handleDrop(e, room, day)}
                           onClick={() => {
+                            if (assigningBooking) {
+                              if (isRoomEligibleForAssignment(room)) {
+                                handleAssignRoom(room);
+                              }
+                              return;
+                            }
                             if (!booking) openQuickCreate(room, day);
                           }}
                           className={cn(
                             "border-b border-r p-0.5 text-center transition-colors",
                             today ? "border-l-2 border-r-2 border-l-violet-300 border-r-violet-300 bg-violet-50/50" : "border-stone-50",
-                            !booking && "cursor-pointer",
+                            !booking && !assigningBooking && "cursor-pointer",
                             !booking && isWeekend(day) && !today && "bg-stone-50/60",
                             today ? "hover:bg-violet-100" : "hover:bg-stone-200/70",
-                            isDragTarget && !booking && "bg-emerald-50 outline outline-1 outline-emerald-300"
+                            isDragTarget && !booking && "bg-emerald-50 outline outline-1 outline-emerald-300",
+                            isAssignTarget && "bg-emerald-50 outline outline-1 outline-emerald-400 cursor-pointer",
+                            isAssignBlocked && "opacity-40 cursor-not-allowed"
                           )}
                         >
                           {booking ? (
@@ -534,5 +630,13 @@ export default function CalendarioPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CalendarioPage() {
+  return (
+    <Suspense>
+      <CalendarioPageContent />
+    </Suspense>
   );
 }
