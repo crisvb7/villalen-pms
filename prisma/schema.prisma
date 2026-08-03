@@ -27,6 +27,7 @@ model Room {
   description String?
   capacity    Int
   basePrice   Decimal  @db.Decimal(10, 2)
+  type        RoomType @default(DOUBLE)
   isClean     Boolean  @default(true)
   amenities   String[] @default([])
   imageUrl    String?
@@ -41,6 +42,11 @@ model Room {
   bookings Booking[]
 
   @@map("rooms")
+}
+
+enum RoomType {
+  DOUBLE
+  APARTMENT
 }
 
 // ─── HUÉSPEDES ────────────────────────────────────────────────────────────────
@@ -65,7 +71,8 @@ model Guest {
 model Booking {
   id           String        @id @default(cuid())
   guestId      String
-  roomId       String
+  roomId       String?
+  roomType     RoomType      @default(DOUBLE)
   checkInDate  DateTime      @db.Date
   checkOutDate DateTime      @db.Date
   totalAmount  Decimal       @db.Decimal(10, 2)
@@ -96,7 +103,7 @@ model Booking {
   updatedAt    DateTime      @updatedAt
 
   guest    Guest     @relation(fields: [guestId], references: [id])
-  room     Room      @relation(fields: [roomId], references: [id])
+  room     Room?     @relation(fields: [roomId], references: [id])
   invoices Invoice[]
 
   @@map("bookings")
