@@ -1,0 +1,1 @@
+UPDATE "bookings" b SET "roomType" = r."type" FROM "rooms" r WHERE b."roomId" = r.id;
