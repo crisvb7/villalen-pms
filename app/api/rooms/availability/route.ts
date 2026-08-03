@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-import { getAvailableRooms } from "@/lib/services/room.service";
+import { getAvailableRoomTypes } from "@/lib/services/room.service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rooms = await getAvailableRooms(checkIn, checkOut, guests);
-    return NextResponse.json({ data: rooms });
+    const types = await getAvailableRoomTypes(checkIn, checkOut, guests);
+    return NextResponse.json({ data: types });
   } catch (error) {
     const msg =
       error instanceof Error

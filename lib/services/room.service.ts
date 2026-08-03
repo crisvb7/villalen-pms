@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { parseISO, isValid, addDays } from "date-fns";
 import { pushAvailabilityAndRates } from "@/lib/services/channex.service";
+import { checkRoomTypeAvailability } from "@/lib/services/booking.service";
 import { RoomType } from "@prisma/client";
 
 export interface CreateRoomData {
@@ -97,13 +98,13 @@ export async function deleteRoom(id: string) {
   return prisma.room.delete({ where: { id } });
 }
 
-// ── Disponibilidad ────────────────────────────────────────────────────────
+// ── Disponibilidad por tipo (motor de reservas público) ───────────────────
 
-export async function getAvailableRooms(
+export async function getAvailableRoomTypes(
   checkInDate: string,
   checkOutDate: string,
   minCapacity = 1
-) {
+): Promise<{ type: RoomType; available: boolean; price: number; capacity: number }[]> {
   const ci = parseISO(checkInDate);
   const co = parseISO(checkOutDate);
 
@@ -111,29 +112,27 @@ export async function getAvailableRooms(
     throw new Error("Rango de fechas inválido.");
   }
 
-  // Habitaciones con reservas que solapan el período solicitado
-  const roomsWithConflicts = await prisma.booking.findMany({
-    where: {
-      status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN"] },
-      AND: [
-        { checkInDate: { lt: co } },
-        { checkOutDate: { gt: ci } },
-      ],
-    },
-    select: { roomId: true },
-  });
-
-  const conflictingRoomIds = roomsWithConflicts
-    .map((b) => b.roomId)
-    .filter((id): id is string => id !== null);
-
-  return prisma.room.findMany({
-    where: {
-      id: { notIn: conflictingRoomIds },
-      capacity: { gte: minCapacity },
-    },
+  const rooms = await prisma.room.findMany({
+    where: { capacity: { gte: minCapacity } },
     orderBy: { basePrice: "asc" },
   });
+
+  const types = Array.from(new Set(rooms.map((r) => r.type)));
+
+  const results = await Promise.all(
+    types.map(async (type) => {
+      const cheapest = rooms.find((r) => r.type === type)!; // rooms ya viene ordenado por basePrice asc
+      const available = await checkRoomTypeAvailability(type, ci, co);
+      return {
+        type,
+        available,
+        price: parseFloat(cheapest.basePrice.toString()),
+        capacity: cheapest.capacity,
+      };
+    })
+  );
+
+  return results.filter((r) => r.available);
 }
 
 // ── Estado de limpieza ────────────────────────────────────────────────────
