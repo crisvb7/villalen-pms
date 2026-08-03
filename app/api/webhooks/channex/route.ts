@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
           data: {
             guestId: guest.id,
             roomId: targetRoom.id,
+            roomType: targetRoom.type,
             checkInDate: checkIn,
             checkOutDate: checkOut,
             totalAmount,
