@@ -36,10 +36,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Prisma
-# (el schema.prisma SÍ se versiona, la BD generada NO)
-prisma/migrations/*/migration.sql
-
 # Archivos de desarrollo
 *.log
 
