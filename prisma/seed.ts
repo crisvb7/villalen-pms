@@ -2,7 +2,7 @@
 // Script de semilla para datos iniciales de prueba
 // Ejecutar: npm run db:seed
 
-import { PrismaClient, BookingStatus, BookingSource } from "@prisma/client";
+import { PrismaClient, BookingStatus, BookingSource, RoomType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -27,6 +27,7 @@ async function main() {
       description:
         "Amplia suite con vistas al bosque de robles centenarios. Cama doble de matrimonio con dosel, baño de mármol con bañera exenta y zona de estar independiente. El desayuno incluye productos ecológicos de la finca.",
       capacity: 2,
+      type: RoomType.DOUBLE,
       basePrice: 145.0,
       isClean: true,
       amenities: [
@@ -49,6 +50,7 @@ async function main() {
       description:
         "Habitación rústica con encanto, decorada con mobiliario artesanal gallego. Camas individuales convertibles en doble, baño con ducha de piedra natural. Perfecta para parejas o viajeros individuales que buscan autenticidad.",
       capacity: 2,
+      type: RoomType.DOUBLE,
       basePrice: 89.0,
       isClean: false,
       amenities: [
@@ -68,6 +70,7 @@ async function main() {
       description:
         "Loft espacioso en la antigua casa del molino, restaurada respetando su arquitectura original. Doble altura, vigas de madera vistas, cocina equipada y zona de trabajo. Ideal para estancias largas.",
       capacity: 4,
+      type: RoomType.DOUBLE,
       basePrice: 185.0,
       isClean: true,
       amenities: [
@@ -83,10 +86,25 @@ async function main() {
     },
   });
 
+  const habitacion4 = await prisma.room.create({
+    data: {
+      name: "Apartamento",
+      description:
+        "Dos habitaciones unidas con un único baño, ideales para familias o grupos que buscan más espacio.",
+      capacity: 4,
+      type: RoomType.APARTMENT,
+      basePrice: 160.0,
+      isClean: true,
+      amenities: ["WiFi", "TV", "Calefacción", "Cocina equipada"],
+      imageUrl: "/images/apartamento.jpg",
+    },
+  });
+
   console.log("🏠 Habitaciones creadas:");
   console.log(`   ✅ ${habitacion1.name} (${habitacion1.basePrice}€/noche)`);
   console.log(`   ✅ ${habitacion2.name} (${habitacion2.basePrice}€/noche)`);
-  console.log(`   ✅ ${habitacion3.name} (${habitacion3.basePrice}€/noche)\n`);
+  console.log(`   ✅ ${habitacion3.name} (${habitacion3.basePrice}€/noche)`);
+  console.log(`   ✅ ${habitacion4.name} (${habitacion4.basePrice}€/noche)\n`);
 
   // ── Crear Huéspedes de prueba ──────────────────────────────────────────
   const huesped1 = await prisma.guest.create({
@@ -168,6 +186,37 @@ async function main() {
   );
   console.log(
     `   ✅ Reserva #${reserva2.id.slice(-6)} — ${huesped2.firstName} en ${habitacion3.name} (PENDIENTE)\n`
+  );
+
+  const huesped3 = await prisma.guest.create({
+    data: {
+      firstName: "Laura",
+      lastName: "Sánchez Pardo",
+      documentId: "98765432C",
+      email: "laura.sanchez@email.com",
+      phone: "+34 622 333 444",
+      nationality: "ES",
+    },
+  });
+
+  const reserva3 = await prisma.booking.create({
+    data: {
+      guestId: huesped3.id,
+      roomId: null,
+      roomType: RoomType.DOUBLE,
+      checkInDate: enTresDias,
+      checkOutDate: enUnaSemana,
+      totalAmount: 89.0 * 4,
+      status: BookingStatus.PENDING,
+      source: BookingSource.WEB,
+      depositPaid: false,
+      adults: 2,
+      notes: "Reserva web de ejemplo, pendiente de asignar habitación doble.",
+    },
+  });
+
+  console.log(
+    `   ✅ Reserva #${reserva3.id.slice(-6)} — ${huesped3.firstName} SIN HABITACIÓN ASIGNADA (tipo: Doble)\n`
   );
 
   // ── Factura de prueba ──────────────────────────────────────────────────
