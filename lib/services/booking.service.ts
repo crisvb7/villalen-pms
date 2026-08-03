@@ -10,7 +10,7 @@ import { pushAvailabilityAndRates } from "@/lib/services/channex.service";
 import { sendEmail } from "@/lib/email/client";
 import { BookingConfirmationEmail } from "@/lib/email/templates/BookingConfirmationEmail";
 import { BookingCancelledEmail } from "@/lib/email/templates/BookingCancelledEmail";
-import { formatDateLong, formatCurrency } from "@/lib/utils";
+import { formatDateLong, formatCurrency, getRoomDisplayName } from "@/lib/utils";
 
 // ── Anti-Overbooking ──────────────────────────────────────────────────────
 
@@ -114,7 +114,6 @@ export async function createBooking(input: CreateBookingInput) {
   const checkIn = parseISO(input.checkInDate);
   const checkOut = parseISO(input.checkOutDate);
 
-  // Validación de fechas
   if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
     throw new Error("Fechas inválidas.");
   }
@@ -124,24 +123,46 @@ export async function createBooking(input: CreateBookingInput) {
   if (checkIn < new Date(new Date().setHours(0, 0, 0, 0))) {
     throw new Error("No se pueden crear reservas en el pasado.");
   }
-
-  // Verificar que la habitación existe
-  const room = await prisma.room.findUnique({ where: { id: input.roomId } });
-  if (!room) throw new Error("Habitación no encontrada.");
-
-  // ⚠️ Verificación anti-overbooking
-  const isAvailable = await checkAvailability(input.roomId, checkIn, checkOut);
-  if (!isAvailable) {
-    throw new Error(
-      "La habitación no está disponible para las fechas seleccionadas. Por favor, elige otras fechas."
-    );
+  if (!input.roomId && !input.roomType) {
+    throw new Error("Debes indicar una habitación (roomId) o un tipo de habitación (roomType).");
   }
 
-  // Calcular importe total
-  const nights = differenceInDays(checkOut, checkIn);
-  const totalAmount = parseFloat((parseFloat(room.basePrice.toString()) * nights).toFixed(2));
+  let assignedRoomId: string | undefined;
+  let roomType: RoomType;
+  let pricePerNight: number;
 
-  // Buscar huésped existente por documentId o crear uno nuevo
+  if (input.roomId) {
+    const room = await prisma.room.findUnique({ where: { id: input.roomId } });
+    if (!room) throw new Error("Habitación no encontrada.");
+
+    const isAvailable = await checkAvailability(input.roomId, checkIn, checkOut);
+    if (!isAvailable) {
+      throw new Error(
+        "La habitación no está disponible para las fechas seleccionadas. Por favor, elige otras fechas."
+      );
+    }
+    assignedRoomId = room.id;
+    roomType = room.type;
+    pricePerNight = parseFloat(room.basePrice.toString());
+  } else {
+    roomType = input.roomType!;
+    const isAvailable = await checkRoomTypeAvailability(roomType, checkIn, checkOut);
+    if (!isAvailable) {
+      throw new Error(
+        "No quedan habitaciones de ese tipo disponibles para las fechas seleccionadas. Por favor, elige otras fechas."
+      );
+    }
+    const reference = await prisma.room.findFirst({
+      where: { type: roomType },
+      orderBy: { basePrice: "asc" },
+    });
+    if (!reference) throw new Error("No hay habitaciones configuradas de ese tipo.");
+    pricePerNight = parseFloat(reference.basePrice.toString());
+  }
+
+  const nights = differenceInDays(checkOut, checkIn);
+  const totalAmount = parseFloat((pricePerNight * nights).toFixed(2));
+
   let guest = await prisma.guest.findFirst({
     where: { documentId: input.guest.documentId },
   });
@@ -158,7 +179,6 @@ export async function createBooking(input: CreateBookingInput) {
       },
     });
   } else {
-    // Actualizar datos de contacto si cambiaron
     guest = await prisma.guest.update({
       where: { id: guest.id },
       data: {
@@ -168,18 +188,14 @@ export async function createBooking(input: CreateBookingInput) {
     });
   }
 
-  // Si el huésped ya guardó una tarjeta (Stripe) al reservar, la reserva
-  // queda confirmada de inmediato en vez de esperar transferencia bancaria.
-  // Igual si la da de alta el personal a mano desde el panel (MANUAL): ya
-  // saben que es real, no tiene sentido el paso extra de confirmarla después.
   const hasStripeCard = Boolean(input.stripeCustomerId && input.stripePaymentMethodId);
   const isManualStaffEntry = input.source === BookingSource.MANUAL;
 
-  // Crear la reserva
   const booking = await prisma.booking.create({
     data: {
       guestId: guest.id,
-      roomId: input.roomId,
+      roomId: assignedRoomId,
+      roomType,
       checkInDate: checkIn,
       checkOutDate: checkOut,
       totalAmount,
@@ -198,7 +214,9 @@ export async function createBooking(input: CreateBookingInput) {
     include: { guest: true, room: true },
   });
 
-  await pushAvailabilityAndRates(booking.roomId, checkIn, checkOut);
+  if (booking.roomId) {
+    await pushAvailabilityAndRates(booking.roomId, checkIn, checkOut);
+  }
 
   const isConfirmed = hasStripeCard || isManualStaffEntry;
   await sendEmail({
@@ -206,7 +224,7 @@ export async function createBooking(input: CreateBookingInput) {
     subject: isConfirmed ? "Tu reserva está confirmada" : "Hemos recibido tu solicitud de reserva",
     react: BookingConfirmationEmail({
       guestFirstName: booking.guest.firstName,
-      roomName: booking.room.name,
+      roomName: getRoomDisplayName(booking),
       checkInDate: formatDateLong(booking.checkInDate),
       checkOutDate: formatDateLong(booking.checkOutDate),
       totalAmount: formatCurrency(booking.totalAmount.toString()),
