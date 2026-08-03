@@ -45,44 +45,42 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex bg-stone-100">
+    <div className="pms-shell min-h-screen flex bg-stone-50">
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex-shrink-0 bg-stone-950 text-stone-300 flex flex-col transition-all duration-200 relative",
+          "flex-shrink-0 bg-villalen-900 text-stone-300 flex flex-col transition-all duration-200 relative",
           collapsed ? "w-16" : "w-60"
         )}
       >
         <button
           onClick={() => setCollapsed((v) => !v)}
           title={collapsed ? "Expandir menú" : "Minimizar menú"}
-          className="absolute -right-3 top-6 z-30 w-6 h-6 flex items-center justify-center rounded-full bg-stone-800 border border-stone-700 text-stone-300 hover:bg-stone-700 hover:text-white transition-colors"
+          className="absolute -right-3 top-6 z-30 w-6 h-6 flex items-center justify-center rounded-full bg-villalen-800 border border-villalen-600/40 text-stone-300 hover:bg-villalen-600 hover:text-white transition-colors shadow-sm"
         >
           <span className="text-xs">{collapsed ? "›" : "‹"}</span>
         </button>
 
         {/* Logo */}
-        <div className={cn("border-b border-stone-800", collapsed ? "px-2 py-6" : "p-6")}>
+        <div className={cn("border-b border-white/10", collapsed ? "px-2 py-6" : "p-6")}>
           <Link href="/admin" className="block group">
             {collapsed ? (
-              <p className="font-serif text-lg text-white text-center group-hover:text-amber-400 transition-colors">
+              <p className="font-serif text-lg text-white text-center group-hover:text-terracotta-300 transition-colors">
                 V
               </p>
             ) : (
               <>
-                <p className="font-serif text-lg text-white group-hover:text-amber-400 transition-colors">
+                <p className="font-serif text-lg text-white group-hover:text-terracotta-300 transition-colors">
                   Villalén
                 </p>
-                <p className="text-xs text-stone-500 mt-0.5 uppercase tracking-widest">
-                  PMS · Backoffice
-                </p>
+                <p className="text-xs text-stone-400 mt-0.5">PMS · Backoffice</p>
               </>
             )}
           </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4">
+        <nav className="flex-1 py-4 px-3 space-y-1">
           {navItems.map((item) => {
             const isActive = item.exact
               ? pathname === item.href
@@ -94,11 +92,11 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 py-3 text-sm transition-all",
-                  collapsed ? "px-0 justify-center" : "px-6",
+                  "flex items-center gap-3 py-2.5 text-sm rounded-xl transition-all",
+                  collapsed ? "px-0 justify-center" : "px-4",
                   isActive
-                    ? "bg-stone-900 text-white border-l-2 border-amber-500"
-                    : "text-stone-400 hover:bg-stone-900 hover:text-white border-l-2 border-transparent"
+                    ? "bg-villalen-600 text-white shadow-sm"
+                    : "text-stone-300 hover:bg-white/10 hover:text-white"
                 )}
               >
                 <span className="text-base">{item.icon}</span>
@@ -109,11 +107,11 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Footer del sidebar */}
-        <div className={cn("border-t border-stone-800", collapsed ? "px-2 py-4" : "p-6")}>
+        <div className={cn("border-t border-white/10", collapsed ? "px-2 py-4" : "p-6")}>
           <Link
             href="/reserva"
             title={collapsed ? "Motor de reservas" : undefined}
-            className="block w-full text-center text-xs text-stone-500 hover:text-amber-400 transition-colors"
+            className="block w-full text-center text-xs text-stone-400 hover:text-terracotta-300 transition-colors"
           >
             {collapsed ? "↗" : "Motor de reservas →"}
           </Link>
@@ -122,7 +120,7 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
               href="https://www.villalen.es"
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full text-center text-xs text-stone-600 hover:text-stone-400 transition-colors"
+              className="block w-full text-center text-xs text-stone-500 hover:text-stone-300 transition-colors"
             >
               villalen.es ↗
             </a>
@@ -144,14 +142,14 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-4">
             {session?.user?.name && (
-              <span className="text-xs text-stone-500">{session.user.name}</span>
+              <span className="text-sm text-stone-600 font-medium">{session.user.name}</span>
             )}
-            <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-3 py-1">
+            <span className="badge bg-terracotta-100 text-terracotta-800">
               Staff · Admin
             </span>
             <button
               onClick={() => signOut({ callbackUrl: "/admin/login" })}
-              className="text-xs text-stone-400 hover:text-red-600 transition-colors"
+              className="text-sm text-stone-400 hover:text-red-600 transition-colors"
             >
               Cerrar sesión
             </button>

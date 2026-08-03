@@ -144,7 +144,7 @@ export default function CajaPage() {
       </div>
 
       {closeResult && (
-        <div className="card p-6 mb-6 bg-amber-50 border-amber-200">
+        <div className="card p-6 mb-6 bg-terracotta-50 border-terracotta-200">
           <h3 className="font-serif text-lg text-stone-800 mb-3">Caja cerrada</h3>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>

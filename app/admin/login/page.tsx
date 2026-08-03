@@ -65,7 +65,7 @@ function LoginForm() {
       </div>
 
       {/* Formulario */}
-      <div className="flex items-center justify-center bg-stone-50 px-6 py-16 lg:py-0">
+      <div className="pms-shell flex items-center justify-center bg-stone-50 px-6 py-16 lg:py-0">
         <div className="w-full max-w-sm">
           <p className="text-xs uppercase tracking-[0.25em] text-villalen-600 mb-2">
             Panel de gestión
@@ -110,7 +110,7 @@ function LoginForm() {
 
             <button
               type="submit"
-              className="btn-primary w-full justify-center bg-villalen-800 hover:bg-villalen-900"
+              className="btn-primary w-full justify-center"
               disabled={loading}
             >
               {loading ? "Entrando…" : "Entrar →"}

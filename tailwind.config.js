@@ -40,7 +40,8 @@ module.exports = {
           900: "#78350f",
         },
         // Azul pizarra de la fachada real de Villalén — acento de marca,
-        // usado con moderación (login, detalles puntuales).
+        // usado con moderación (login, detalles puntuales) y como color de
+        // acción principal en el backoffice (ver .pms-shell en globals.css).
         villalen: {
           50: "#eef2f3",
           200: "#c3d1d4",
@@ -48,6 +49,25 @@ module.exports = {
           600: "#3e5a63",
           800: "#2c4048",
           900: "#1f2e33",
+        },
+        // Terracota cálida — acento secundario del backoffice (avisos,
+        // estado "pendiente"), sustituye al ámbar en las zonas rediseñadas.
+        terracotta: {
+          50: "#fbf3ea",
+          100: "#f7e9d8",
+          300: "#e3b383",
+          600: "#c17a3c",
+          700: "#a8632b",
+          800: "#8a4e1e",
+        },
+        // Salvia — acento de éxito/confirmación del backoffice.
+        sage: {
+          50: "#f0f4ef",
+          100: "#e7efe4",
+          300: "#a9c2a0",
+          600: "#5b8266",
+          700: "#4a6d55",
+          800: "#3d5d45",
         },
       },
       backgroundImage: {

@@ -47,7 +47,7 @@ export default async function AdminDashboard() {
         </div>
         <div className="card p-5">
           <p className="label mb-2">Pendientes pago</p>
-          <p className="font-serif text-4xl text-amber-700">{pending.length}</p>
+          <p className="font-serif text-4xl text-terracotta-700">{pending.length}</p>
           <p className="text-xs text-stone-400 mt-1">sin confirmar</p>
         </div>
         <div className="card p-5">
@@ -59,7 +59,7 @@ export default async function AdminDashboard() {
         </div>
         <div className="card p-5">
           <p className="label mb-2">Ingresos (confirmadas)</p>
-          <p className="font-serif text-2xl text-emerald-700">
+          <p className="font-serif text-2xl text-sage-700">
             {formatCurrency(totalRevenue)}
           </p>
           <p className="text-xs text-stone-400 mt-1">acumulado total</p>
@@ -70,22 +70,22 @@ export default async function AdminDashboard() {
       {(pending.length > 0 || dirtyRooms.length > 0) && (
         <div className="mb-8 grid gap-3">
           {pending.length > 0 && (
-            <div className="border-l-4 border-amber-500 bg-amber-50 p-4 flex items-start justify-between">
+            <div className="rounded-2xl border border-terracotta-100 bg-terracotta-50 p-4 flex items-start justify-between">
               <div>
-                <p className="font-medium text-amber-900 text-sm">
+                <p className="font-medium text-terracotta-900 text-sm">
                   ⚠️ {pending.length} reserva(s) pendiente(s) de confirmación
                 </p>
-                <p className="text-xs text-amber-700 mt-0.5">
+                <p className="text-xs text-terracotta-700 mt-0.5">
                   Revisar recepción de transferencias bancarias
                 </p>
               </div>
-              <Link href="/admin/reservas?status=PENDING" className="text-xs text-amber-800 underline">
+              <Link href="/admin/reservas?status=PENDING" className="chip bg-white text-terracotta-800 border-terracotta-200 hover:bg-terracotta-100 flex-shrink-0">
                 Ver →
               </Link>
             </div>
           )}
           {dirtyRooms.length > 0 && (
-            <div className="border-l-4 border-red-400 bg-red-50 p-4 flex items-start justify-between">
+            <div className="rounded-2xl border border-red-100 bg-red-50 p-4 flex items-start justify-between">
               <div>
                 <p className="font-medium text-red-900 text-sm">
                   🧹 {dirtyRooms.length} habitación(es) pendiente(s) de limpieza
@@ -94,7 +94,7 @@ export default async function AdminDashboard() {
                   {dirtyRooms.map((r) => r.name).join(", ")}
                 </p>
               </div>
-              <Link href="/admin/limpieza" className="text-xs text-red-800 underline">
+              <Link href="/admin/limpieza" className="chip bg-white text-red-800 border-red-200 hover:bg-red-100 flex-shrink-0">
                 Gestionar →
               </Link>
             </div>
@@ -106,7 +106,7 @@ export default async function AdminDashboard() {
       <div className="card">
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
           <h2 className="font-serif text-xl text-stone-800">Próximas llegadas</h2>
-          <Link href="/admin/reservas" className="text-xs text-amber-800 hover:underline">
+          <Link href="/admin/reservas" className="text-xs text-villalen-700 font-medium hover:underline">
             Ver todas →
           </Link>
         </div>
@@ -119,7 +119,7 @@ export default async function AdminDashboard() {
             {upcoming.slice(0, 5).map((booking) => (
               <div
                 key={booking.id}
-                className="px-6 py-4 flex items-center justify-between hover:bg-stone-50 transition-colors"
+                className="px-6 py-4 flex items-center justify-between hover:bg-villalen-50/40 transition-colors"
               >
                 <div>
                   <p className="font-medium text-stone-800 text-sm">

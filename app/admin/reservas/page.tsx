@@ -188,9 +188,9 @@ export default function AdminReservasPage() {
           <button
             key={s.value}
             onClick={() => setFilter(s.value)}
-            className={`px-4 py-2 text-xs font-medium border transition-colors ${
+            className={`filter-chip ${
               filter === s.value
-                ? "bg-stone-900 text-white border-stone-900"
+                ? "bg-villalen-600 text-white border-villalen-600"
                 : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
             }`}
           >
@@ -332,7 +332,7 @@ export default function AdminReservasPage() {
                           {!["CANCELLED", "CHECKED_OUT"].includes(booking.status) && (
                             <button
                               onClick={() => handleCopyPrecheckinLink(booking.id)}
-                              className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 hover:bg-blue-100 transition-colors"
+                              className="chip bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
                             >
                               🔗 Precheckin
                             </button>
@@ -340,7 +340,7 @@ export default function AdminReservasPage() {
                           <button
                             onClick={() => handleResendEmail(booking.id)}
                             disabled={resendingEmail === booking.id}
-                            className="text-xs bg-stone-100 text-stone-600 border border-stone-200 px-2 py-1 hover:bg-stone-200 transition-colors disabled:opacity-50"
+                            className="chip bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200"
                           >
                             {resendingEmail === booking.id ? "Enviando…" : "📧 Reenviar email"}
                           </button>
@@ -349,7 +349,7 @@ export default function AdminReservasPage() {
                               <button
                                 onClick={() => handleSendSes(booking.id)}
                                 disabled={sendingSes === booking.id}
-                                className="text-xs bg-stone-700 text-white px-2 py-1 hover:bg-stone-800 transition-colors disabled:opacity-50"
+                                className="chip bg-stone-700 text-white border-transparent hover:bg-stone-800"
                               >
                                 {sendingSes === booking.id ? "Enviando…" : "📤 Enviar a Policía"}
                               </button>
@@ -360,7 +360,7 @@ export default function AdminReservasPage() {
                               <button
                                 onClick={() => handleCharge(booking.id, booking.totalAmount)}
                                 disabled={charging === booking.id}
-                                className="text-xs bg-amber-600 text-white px-2 py-1 hover:bg-amber-700 transition-colors disabled:opacity-50"
+                                className="chip bg-terracotta-600 text-white border-transparent hover:bg-terracotta-700"
                               >
                                 {charging === booking.id ? "Cobrando…" : "💳 Cobrar ahora"}
                               </button>
@@ -370,7 +370,7 @@ export default function AdminReservasPage() {
                               <button
                                 onClick={() => handleInvoice(booking.id)}
                                 disabled={invoicing === booking.id}
-                                className="text-xs bg-stone-700 text-white px-2 py-1 hover:bg-stone-800 transition-colors disabled:opacity-50"
+                                className="chip bg-stone-700 text-white border-transparent hover:bg-stone-800"
                               >
                                 {invoicing === booking.id ? "Facturando…" : "🧾 Facturar"}
                               </button>
@@ -385,7 +385,7 @@ export default function AdminReservasPage() {
                                 )
                               }
                               disabled={isUpdating}
-                              className="text-xs bg-emerald-600 text-white px-2 py-1 hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                              className="chip bg-sage-600 text-white border-transparent hover:bg-sage-700"
                             >
                               Confirmar
                             </button>
@@ -396,7 +396,7 @@ export default function AdminReservasPage() {
                                 handleStatusChange(booking.id, "CHECKED_IN")
                               }
                               disabled={isUpdating}
-                              className="text-xs bg-blue-600 text-white px-2 py-1 hover:bg-blue-700 transition-colors disabled:opacity-50"
+                              className="chip bg-villalen-600 text-white border-transparent hover:bg-villalen-800"
                             >
                               Check-in
                             </button>
@@ -407,7 +407,7 @@ export default function AdminReservasPage() {
                                 handleStatusChange(booking.id, "CHECKED_OUT")
                               }
                               disabled={isUpdating}
-                              className="text-xs bg-stone-600 text-white px-2 py-1 hover:bg-stone-700 transition-colors disabled:opacity-50"
+                              className="chip bg-stone-600 text-white border-transparent hover:bg-stone-700"
                             >
                               Check-out
                             </button>
@@ -418,7 +418,7 @@ export default function AdminReservasPage() {
                             <button
                               onClick={() => handleCancel(booking.id)}
                               disabled={isUpdating}
-                              className="text-xs text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
+                              className="chip bg-white text-red-600 border-red-200 hover:bg-red-50"
                             >
                               Cancelar
                             </button>

@@ -229,7 +229,7 @@ export default function HabitacionesPage() {
         <div className="grid gap-4">
           {rooms.map((room) => (
             <div key={room.id} className="card p-6 flex flex-col md:flex-row gap-4">
-              <div className="h-24 w-24 flex-shrink-0 bg-stone-100 flex items-center justify-center text-3xl">
+              <div className="h-24 w-24 flex-shrink-0 rounded-xl bg-stone-100 flex items-center justify-center text-3xl">
                 🏠
               </div>
               <div className="flex-1">
@@ -246,7 +246,7 @@ export default function HabitacionesPage() {
                   <div className="flex items-center gap-3">
                     <span
                       className={cn(
-                        "text-xs border px-2 py-0.5",
+                        "badge",
                         room.isClean
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : "bg-red-50 text-red-700 border-red-200"
@@ -257,7 +257,7 @@ export default function HabitacionesPage() {
                     <button
                       onClick={() => openChannelPanel(room)}
                       className={cn(
-                        "text-xs px-2 py-0.5 border transition-colors",
+                        "chip",
                         room.channexRoomTypeId
                           ? "bg-sky-50 text-sky-700 border-sky-200"
                           : "bg-stone-50 text-stone-500 border-stone-200"
@@ -267,7 +267,7 @@ export default function HabitacionesPage() {
                     </button>
                     <button
                       onClick={() => handleDelete(room.id, room.name)}
-                      className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                      className="chip bg-white text-red-600 border-red-200 hover:bg-red-50"
                     >
                       Eliminar
                     </button>
@@ -275,7 +275,7 @@ export default function HabitacionesPage() {
                 </div>
 
                 {channelRoomId === room.id && (
-                  <div className="mt-3 border border-stone-200 p-4 bg-stone-50">
+                  <div className="mt-3 rounded-xl border border-stone-200 p-4 bg-stone-50">
                     <p className="text-xs text-stone-500 mb-3">
                       Mapeo con el Channel Manager (Channex). Crea antes el room type y el
                       rate plan de esta habitación en el dashboard de Channex y pega aquí sus IDs.
@@ -335,7 +335,7 @@ export default function HabitacionesPage() {
                     {room.amenities.map((a) => (
                       <span
                         key={a}
-                        className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5"
+                        className="text-xs bg-stone-100 text-stone-600 rounded-full px-2.5 py-1"
                       >
                         {a}
                       </span>

@@ -98,21 +98,21 @@ export default function HuespedesPage() {
               </thead>
               <tbody className="divide-y divide-stone-50">
                 {filtered.map((guest) => (
-                  <tr key={guest.id} className="hover:bg-stone-50 transition-colors">
+                  <tr key={guest.id} className="table-row-hover">
                     <td className="px-4 py-3">
                       <p className="font-medium text-stone-800">
                         {guest.firstName} {guest.lastName}
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs bg-stone-100 px-2 py-0.5 text-stone-600">
+                      <span className="font-mono text-xs bg-stone-100 rounded-full px-2.5 py-1 text-stone-600">
                         {guest.documentId}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-stone-600">
                       <a
                         href={`mailto:${guest.email}`}
-                        className="hover:text-amber-800 transition-colors"
+                        className="hover:text-villalen-700 transition-colors"
                       >
                         {guest.email}
                       </a>
@@ -121,7 +121,7 @@ export default function HuespedesPage() {
                       {guest.phone ?? "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs bg-stone-100 px-2 py-0.5 text-stone-600">
+                      <span className="text-xs bg-stone-100 rounded-full px-2.5 py-1 text-stone-600">
                         {guest.nationality ?? "ES"}
                       </span>
                     </td>

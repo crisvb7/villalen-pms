@@ -96,7 +96,7 @@ export const STATUS_LABELS: Record<string, string> = {
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-800 border-amber-200",
+  PENDING: "bg-terracotta-100 text-terracotta-800 border-terracotta-200",
   CONFIRMED: "bg-emerald-100 text-emerald-800 border-emerald-200",
   CANCELLED: "bg-red-100 text-red-800 border-red-200",
   CHECKED_IN: "bg-blue-100 text-blue-800 border-blue-200",
@@ -123,7 +123,7 @@ export const QUOTE_STATUS_COLORS: Record<string, string> = {
   SENT: "bg-blue-100 text-blue-800 border-blue-200",
   ACCEPTED: "bg-emerald-100 text-emerald-800 border-emerald-200",
   REJECTED: "bg-red-100 text-red-800 border-red-200",
-  EXPIRED: "bg-amber-100 text-amber-800 border-amber-200",
+  EXPIRED: "bg-terracotta-100 text-terracotta-800 border-terracotta-200",
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

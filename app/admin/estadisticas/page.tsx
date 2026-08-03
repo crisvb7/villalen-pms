@@ -21,7 +21,7 @@ import {
 import { formatCurrency, SOURCE_LABELS } from "@/lib/utils";
 
 const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const PIE_COLORS = ["#b45309", "#0e7490", "#65a30d", "#a21caf", "#dc2626", "#334155"];
+const PIE_COLORS = ["#3e5a63", "#c17a3c", "#5b8266", "#a21caf", "#dc2626", "#334155"];
 
 interface Stats {
   year: number;
@@ -126,8 +126,8 @@ export default function EstadisticasPage() {
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(v) => formatCurrency(Number(v))} />
                   <Legend />
-                  <Bar dataKey="Ingresos" fill="#0e7490" />
-                  <Bar dataKey="Gastos" fill="#dc2626" />
+                  <Bar dataKey="Ingresos" fill="#5b8266" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Gastos" fill="#dc2626" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -140,7 +140,7 @@ export default function EstadisticasPage() {
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
                   <Tooltip formatter={(v) => `${v}%`} />
-                  <Line type="monotone" dataKey="Ocupación" stroke="#b45309" strokeWidth={2} />
+                  <Line type="monotone" dataKey="Ocupación" stroke="#3e5a63" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -183,7 +183,7 @@ export default function EstadisticasPage() {
                   </thead>
                   <tbody className="divide-y divide-stone-50">
                     {stats.roomPerformance.map((r) => (
-                      <tr key={r.roomName}>
+                      <tr key={r.roomName} className="table-row-hover">
                         <td className="px-4 py-3 text-stone-700">{r.roomName}</td>
                         <td className="px-4 py-3 text-right text-stone-600">{r.bookings}</td>
                         <td className="px-4 py-3 text-right font-medium text-stone-800">

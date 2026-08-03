@@ -170,7 +170,7 @@ export default function LimpiezaPage() {
                   </div>
                   <span
                     className={cn(
-                      "text-xs font-medium px-2 py-1 border",
+                      "badge",
                       room.isClean
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                         : "bg-red-50 text-red-700 border-red-200"
@@ -182,7 +182,7 @@ export default function LimpiezaPage() {
 
                 {/* Ocupación actual */}
                 {isOccupied && (
-                  <div className="mb-4 bg-blue-50 border border-blue-100 p-3 text-xs">
+                  <div className="mb-4 rounded-xl bg-blue-50 border border-blue-100 p-3 text-xs">
                     <p className="text-blue-800 font-medium">Ocupada ahora</p>
                     <p className="text-blue-600">
                       {room.bookings[0].guest.firstName}{" "}
@@ -202,10 +202,10 @@ export default function LimpiezaPage() {
                   onClick={() => toggleCleanStatus(room.id, room.isClean)}
                   disabled={isUpdating}
                   className={cn(
-                    "w-full py-3 text-sm font-medium border transition-all active:scale-[0.98] disabled:opacity-50",
+                    "w-full py-3 rounded-full text-sm font-medium border transition-all active:scale-[0.98] disabled:opacity-50",
                     room.isClean
                       ? "bg-white border-stone-200 text-stone-600 hover:bg-red-50 hover:border-red-200 hover:text-red-700"
-                      : "bg-emerald-600 border-emerald-700 text-white hover:bg-emerald-700"
+                      : "bg-sage-600 border-sage-700 text-white hover:bg-sage-700"
                   )}
                 >
                   {isUpdating

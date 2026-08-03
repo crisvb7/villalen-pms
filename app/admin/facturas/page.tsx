@@ -158,7 +158,7 @@ export default function FacturasPage() {
                         className={`badge ${
                           invoice.isPaid
                             ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                            : "bg-amber-100 text-amber-800 border-amber-200"
+                            : "bg-terracotta-100 text-terracotta-800 border-terracotta-200"
                         }`}
                       >
                         {invoice.isPaid ? "Pagada" : "Pendiente"}
@@ -175,13 +175,13 @@ export default function FacturasPage() {
                           href={`/api/invoices/${invoice.id}/pdf`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs bg-stone-700 text-white px-2 py-1 hover:bg-stone-800 transition-colors"
+                          className="chip bg-stone-700 text-white border-transparent hover:bg-stone-800"
                         >
                           📄 PDF
                         </a>
                         <button
                           onClick={() => toggleExpanded(invoice.id)}
-                          className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 hover:bg-amber-100 transition-colors font-medium"
+                          className="chip bg-terracotta-50 text-terracotta-800 border-terracotta-200 hover:bg-terracotta-100"
                         >
                           {invoice.extras.length > 0
                             ? `🍽️ Servicios (${invoice.extras.length})`
@@ -194,7 +194,7 @@ export default function FacturasPage() {
                               onChange={(e) =>
                                 setPaymentSelection((s) => ({ ...s, [invoice.id]: e.target.value }))
                               }
-                              className="input text-xs py-1 px-2 w-auto"
+                              className="input text-xs py-1.5 px-2 w-auto"
                             >
                               {PAYMENT_METHOD_OPTIONS.map((m) => (
                                 <option key={m} value={m}>
@@ -205,7 +205,7 @@ export default function FacturasPage() {
                             <button
                               onClick={() => handleMarkPaid(invoice.id)}
                               disabled={updating === invoice.id}
-                              className="text-xs bg-emerald-600 text-white px-2 py-1 hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                              className="chip bg-sage-600 text-white border-transparent hover:bg-sage-700"
                             >
                               Marcar pagada
                             </button>
@@ -226,7 +226,7 @@ export default function FacturasPage() {
                             {invoice.extras.map((extra) => (
                               <div
                                 key={extra.id}
-                                className="flex items-center justify-between text-sm bg-white border border-stone-100 px-3 py-1.5 max-w-md"
+                                className="flex items-center justify-between text-sm bg-white border border-stone-100 rounded-lg px-3 py-1.5 max-w-md"
                               >
                                 <span className="text-stone-700">{extra.description}</span>
                                 <div className="flex items-center gap-3">

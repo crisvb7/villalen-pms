@@ -61,4 +61,69 @@
   .table-row-hover {
     @apply cursor-pointer transition-colors hover:bg-amber-50/50;
   }
+
+  /* Botón/insignia pequeña de acción en tablas (backoffice) — el color
+     (bg/texto/borde) se añade en cada uso, p. ej.
+     className="chip bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Botón de filtro/pestaña (backoffice) — el color activo/inactivo se
+     añade en cada uso, igual que .chip. */
+  .filter-chip {
+    @apply rounded-full px-4 py-2 text-xs font-medium border transition-colors;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   BACKOFFICE (.pms-shell) — dirección de diseño más cercana y accesible
+   para personal que no maneja bien los ordenadores, manteniendo la
+   seriedad del hotel (Playfair Display en títulos, paleta cálida).
+   Se ancla a `.pms-shell` (app/admin/layout.tsx) para no afectar al motor
+   de reservas público (/reserva) ni al precheckin, que conservan el
+   estilo editorial original a juego con villalen.es.
+   ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* Solo forma/color/sombra — nunca padding aquí: varias páginas recortan
+     el tamaño de estos botones/inputs con utilidades inline (p. ej.
+     `btn-secondary text-xs px-3 py-2` o `input py-1 px-2 w-auto`), y al
+     tener esta regla dos clases encadenadas (mayor especificidad que una
+     utilidad suelta) un padding fijo aquí les ganaría siempre y rompería
+     esos tamaños compactos. */
+  .pms-shell .btn-primary {
+    @apply rounded-full bg-villalen-600 shadow-md shadow-villalen-900/10 hover:bg-villalen-800;
+  }
+
+  .pms-shell .btn-secondary {
+    @apply rounded-full border-stone-300 hover:bg-stone-100;
+  }
+
+  .pms-shell .btn-ghost {
+    @apply rounded-full;
+  }
+
+  .pms-shell .btn-danger {
+    @apply rounded-full shadow-md shadow-red-900/10;
+  }
+
+  .pms-shell .card {
+    @apply rounded-2xl border-stone-200/80 shadow-sm shadow-stone-900/[0.04];
+  }
+
+  .pms-shell .input {
+    @apply rounded-xl border-stone-300 focus:border-villalen-600 focus:ring-2 focus:ring-villalen-600/25;
+  }
+
+  .pms-shell .label {
+    @apply text-[13px] font-semibold normal-case tracking-normal text-stone-600;
+  }
+
+  .pms-shell .badge {
+    @apply rounded-full border-transparent font-semibold;
+  }
+
+  .pms-shell .table-row-hover {
+    @apply hover:bg-villalen-50/50;
+  }
 }

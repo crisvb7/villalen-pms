@@ -377,14 +377,14 @@ export default function PresupuestosPage() {
                             href={`/api/quotes/${quote.id}/pdf`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs bg-stone-700 text-white px-2 py-1 hover:bg-stone-800 transition-colors"
+                            className="chip bg-stone-700 text-white border-transparent hover:bg-stone-800"
                           >
                             📄 PDF
                           </a>
                           {quote.status === "DRAFT" && (
                             <button
                               onClick={() => handleStatusChange(quote.id, "SENT")}
-                              className="text-xs bg-blue-600 text-white px-2 py-1 hover:bg-blue-700 transition-colors"
+                              className="chip bg-villalen-600 text-white border-transparent hover:bg-villalen-800"
                             >
                               Marcar enviado
                             </button>
@@ -392,7 +392,7 @@ export default function PresupuestosPage() {
                           {["DRAFT", "SENT"].includes(quote.status) && (
                             <button
                               onClick={() => handleStatusChange(quote.id, "REJECTED")}
-                              className="text-xs text-red-600 hover:text-red-800 transition-colors"
+                              className="chip bg-white text-red-600 border-red-200 hover:bg-red-50"
                             >
                               Rechazar
                             </button>
@@ -400,20 +400,20 @@ export default function PresupuestosPage() {
                           {!quote.convertedBookingId && (
                             <button
                               onClick={() => openConvertPanel(quote)}
-                              className="text-xs bg-emerald-600 text-white px-2 py-1 hover:bg-emerald-700 transition-colors"
+                              className="chip bg-sage-600 text-white border-transparent hover:bg-sage-700"
                             >
                               ✓ Convertir en reserva
                             </button>
                           )}
                           {quote.convertedBookingId && (
-                            <span className="text-xs text-emerald-600">✓ Convertido en reserva</span>
+                            <span className="badge bg-sage-100 text-sage-800 border-sage-200">✓ Convertido en reserva</span>
                           )}
                         </div>
                       </td>
                     </tr>
                     {convertingId === quote.id && (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 bg-stone-50 border-b border-stone-100">
+                        <td colSpan={7} className="px-4 py-4 bg-villalen-50/40 border-b border-stone-100">
                           <div className="max-w-3xl">
                             <p className="text-xs text-stone-500 mb-3">
                               Faltan estos datos para crear la reserva real: habitación de
@@ -492,7 +492,7 @@ export default function PresupuestosPage() {
                               </div>
                             </div>
                             {convertError && (
-                              <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 p-3">
+                              <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">
                                 {convertError}
                               </p>
                             )}

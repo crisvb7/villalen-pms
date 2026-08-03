@@ -234,7 +234,7 @@ export default function GastosPage() {
                     <td className="px-4 py-3">
                       <button
                         onClick={() => handleDelete(expense.id)}
-                        className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                        className="chip bg-white text-red-600 border-red-200 hover:bg-red-50"
                       >
                         Eliminar
                       </button>

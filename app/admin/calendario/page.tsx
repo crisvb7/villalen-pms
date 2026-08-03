@@ -42,7 +42,7 @@ interface QuickCreateTarget {
 }
 
 const STATUS_BG: Record<string, string> = {
-  PENDING: "bg-amber-100 border-amber-300 text-amber-900",
+  PENDING: "bg-terracotta-100 border-terracotta-300 text-terracotta-900",
   CONFIRMED: "bg-emerald-100 border-emerald-300 text-emerald-900",
   CHECKED_IN: "bg-blue-100 border-blue-300 text-blue-900",
   CHECKED_OUT: "bg-stone-100 border-stone-300 text-stone-500",
@@ -271,9 +271,9 @@ export default function CalendarioPage() {
           <button
             onClick={() => setEditMode((v) => !v)}
             className={cn(
-              "text-xs px-3 py-2 border font-medium transition-colors",
+              "filter-chip",
               editMode
-                ? "bg-stone-900 text-white border-stone-900"
+                ? "bg-villalen-600 text-white border-villalen-600"
                 : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
             )}
           >
@@ -285,7 +285,7 @@ export default function CalendarioPage() {
       {/* Leyenda */}
       <div className="flex gap-4 mb-4 flex-wrap">
         {[
-          { label: "Pendiente", color: "bg-amber-100 border-amber-300" },
+          { label: "Pendiente", color: "bg-terracotta-100 border-terracotta-300" },
           { label: "Confirmada", color: "bg-emerald-100 border-emerald-300" },
           { label: "En casa", color: "bg-blue-100 border-blue-300" },
           { label: "Finalizada", color: "bg-stone-100 border-stone-300" },
@@ -293,7 +293,7 @@ export default function CalendarioPage() {
           { label: "Hoy", color: "bg-violet-600 border-violet-600" },
         ].map((l) => (
           <div key={l.label} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded-sm border ${l.color}`} />
+            <div className={`w-3 h-3 rounded-full border ${l.color}`} />
             <span className="text-xs text-stone-500">{l.label}</span>
           </div>
         ))}
@@ -302,7 +302,7 @@ export default function CalendarioPage() {
       {banner && (
         <div
           className={cn(
-            "mb-4 px-4 py-2 text-sm border",
+            "mb-4 rounded-xl px-4 py-2.5 text-sm border",
             banner.type === "error"
               ? "bg-red-50 text-red-700 border-red-200"
               : "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -389,7 +389,7 @@ export default function CalendarioPage() {
                               }}
                               onDragEnd={() => setDraggingId(null)}
                               className={cn(
-                                "h-8 border px-1.5 text-xs leading-8 truncate text-left",
+                                "h-8 rounded-md border px-1.5 text-xs leading-8 truncate text-left",
                                 STATUS_BG[booking.status] ?? "bg-stone-100 border-stone-300",
                                 editMode && "cursor-grab active:cursor-grabbing",
                                 draggingId === booking.id && "opacity-40"
