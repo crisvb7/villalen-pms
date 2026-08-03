@@ -138,6 +138,7 @@ function CalendarioPageContent() {
     const hasConflict = bookings.some((b) => {
       if (b.id === assigningBooking.id) return false;
       if (b.roomId !== room.id) return false;
+      if (!["PENDING", "CONFIRMED", "CHECKED_IN"].includes(b.status)) return false;
       const ci = startOfDay(parseISO(b.checkInDate));
       const co = startOfDay(parseISO(b.checkOutDate));
       return aCheckIn < co && aCheckOut > ci;
@@ -458,6 +459,7 @@ function CalendarioPageContent() {
                           onDrop={(e) => handleDrop(e, room, day)}
                           onClick={() => {
                             if (assigningBooking) {
+                              if (assigning) return;
                               if (isRoomEligibleForAssignment(room)) {
                                 handleAssignRoom(room);
                               }
