@@ -10,6 +10,7 @@ interface Room {
   description: string | null;
   capacity: number;
   basePrice: string;
+  type: string;
   isClean: boolean;
   amenities: string[];
   channexRoomTypeId: string | null;
@@ -27,6 +28,7 @@ export default function HabitacionesPage() {
     capacity: "2",
     basePrice: "",
     amenities: "",
+    type: "DOUBLE",
   });
   const [channelRoomId, setChannelRoomId] = useState<string | null>(null);
   const [channelForm, setChannelForm] = useState({ channexRoomTypeId: "", channexRatePlanId: "" });
@@ -56,13 +58,14 @@ export default function HabitacionesPage() {
           description: form.description,
           capacity: Number(form.capacity),
           basePrice: Number(form.basePrice),
+          type: form.type,
           amenities: form.amenities
             .split(",")
             .map((a) => a.trim())
             .filter(Boolean),
         }),
       });
-      setForm({ name: "", description: "", capacity: "2", basePrice: "", amenities: "" });
+      setForm({ name: "", description: "", capacity: "2", basePrice: "", amenities: "", type: "DOUBLE" });
       setShowForm(false);
       await fetchRooms();
     } finally {
@@ -123,6 +126,15 @@ export default function HabitacionesPage() {
     await fetchRooms();
   };
 
+  const handleTypeChange = async (id: string, type: string) => {
+    await fetch(`/api/rooms/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type }),
+    });
+    await fetchRooms();
+  };
+
   return (
     <div>
       <div className="mb-6 flex items-start justify-between">
@@ -172,7 +184,7 @@ export default function HabitacionesPage() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="label mb-2">Capacidad (personas) *</label>
               <input
@@ -184,6 +196,17 @@ export default function HabitacionesPage() {
                 onChange={(e) => setForm({ ...form, capacity: e.target.value })}
                 required
               />
+            </div>
+            <div>
+              <label className="label mb-2">Tipo *</label>
+              <select
+                className="input"
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+              >
+                <option value="DOUBLE">Habitación Doble</option>
+                <option value="APARTMENT">Apartamento</option>
+              </select>
             </div>
             <div>
               <label className="label mb-2">Amenidades (separadas por coma)</label>
@@ -244,6 +267,14 @@ export default function HabitacionesPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
+                    <select
+                      value={room.type}
+                      onChange={(e) => handleTypeChange(room.id, e.target.value)}
+                      className="chip bg-white text-stone-600 border-stone-200"
+                    >
+                      <option value="DOUBLE">Doble</option>
+                      <option value="APARTMENT">Apartamento</option>
+                    </select>
                     <span
                       className={cn(
                         "badge",
