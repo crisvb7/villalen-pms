@@ -11,10 +11,13 @@ import {
   SOURCE_LABELS,
   getNights,
   isPastFreeCancellation,
+  getRoomDisplayName,
 } from "@/lib/utils";
 
 interface Booking {
   id: string;
+  roomId: string | null;
+  roomType: string;
   checkInDate: string;
   checkOutDate: string;
   status: string;
@@ -33,7 +36,7 @@ interface Booking {
   room: {
     name: string;
     basePrice: string;
-  };
+  } | null;
   invoices: { id: string }[];
   precheckinCompletedAt: string | null;
   sesSubmittedAt: string | null;
@@ -275,7 +278,14 @@ export default function AdminReservasPage() {
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-stone-700">{booking.room.name}</p>
+                        <p className="text-stone-700">
+                          {getRoomDisplayName(booking)}
+                          {!booking.roomId && (
+                            <span className="badge bg-amber-100 text-amber-800 border-amber-200 ml-2">
+                              Sin asignar
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-stone-400">
                           {booking.adults} ad.
                           {booking.children > 0
@@ -395,8 +405,9 @@ export default function AdminReservasPage() {
                               onClick={() =>
                                 handleStatusChange(booking.id, "CHECKED_IN")
                               }
-                              disabled={isUpdating}
-                              className="chip bg-villalen-600 text-white border-transparent hover:bg-villalen-800"
+                              disabled={isUpdating || !booking.roomId}
+                              title={!booking.roomId ? "Asigna una habitación antes de hacer el check-in." : undefined}
+                              className="chip bg-villalen-600 text-white border-transparent hover:bg-villalen-800 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               Check-in
                             </button>
