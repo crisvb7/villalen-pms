@@ -4,10 +4,10 @@
 // AVISO PCI-DSS: Ningún tipo en este archivo contiene campos para
 // datos de tarjetas de crédito (PAN, caducidad, CVC/CVV).
 
-import { BookingStatus, BookingSource } from "@prisma/client";
+import { BookingStatus, BookingSource, RoomType } from "@prisma/client";
 
 // ── Re-export de enumeraciones de Prisma ──────────────────────────────────
-export { BookingStatus, BookingSource };
+export { BookingStatus, BookingSource, RoomType };
 
 // ── Tipos de dominio ──────────────────────────────────────────────────────
 
@@ -17,6 +17,7 @@ export interface RoomDTO {
   description: string | null;
   capacity: number;
   basePrice: number;
+  type: RoomType;
   isClean: boolean;
   amenities: string[];
   imageUrl: string | null;
@@ -39,7 +40,8 @@ export interface GuestDTO {
 export interface BookingDTO {
   id: string;
   guestId: string;
-  roomId: string;
+  roomId: string | null;
+  roomType: RoomType;
   checkInDate: Date;
   checkOutDate: Date;
   totalAmount: number;
@@ -54,7 +56,7 @@ export interface BookingDTO {
   createdAt: Date;
   updatedAt: Date;
   guest?: GuestDTO;
-  room?: RoomDTO;
+  room?: RoomDTO | null;
 }
 
 export interface InvoiceDTO {
@@ -72,7 +74,8 @@ export interface InvoiceDTO {
 // ── Tipos de Request/Response ─────────────────────────────────────────────
 
 export interface CreateBookingInput {
-  roomId: string;
+  roomId?: string;
+  roomType?: RoomType;
   checkInDate: string; // ISO string
   checkOutDate: string; // ISO string
   adults: number;

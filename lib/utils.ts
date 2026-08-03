@@ -135,6 +135,22 @@ export const SOURCE_LABELS: Record<string, string> = {
   PHONE: "Teléfono",
 };
 
+// ── Tipo de habitación ────────────────────────────────────────────────────────
+
+export const ROOM_TYPE_LABELS: Record<string, string> = {
+  DOUBLE: "Habitación Doble",
+  APARTMENT: "Apartamento",
+};
+
+// Si la reserva ya tiene una habitación física asignada, se muestra su
+// nombre; si no (reserva web pendiente de asignar), se muestra el tipo.
+export function getRoomDisplayName(booking: {
+  roomType: string;
+  room?: { name: string } | null;
+}): string {
+  return booking.room?.name ?? ROOM_TYPE_LABELS[booking.roomType] ?? "Sin asignar";
+}
+
 // ── Validaciones ──────────────────────────────────────────────────────────
 
 export function isValidEmail(email: string): boolean {
