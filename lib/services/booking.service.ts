@@ -251,7 +251,9 @@ export async function updateBookingStatus(
     include: { guest: true, room: true },
   });
 
-  await pushAvailabilityAndRates(booking.roomId, booking.checkInDate, booking.checkOutDate);
+  if (booking.roomId) {
+    await pushAvailabilityAndRates(booking.roomId, booking.checkInDate, booking.checkOutDate);
+  }
 
   return booking;
 }
@@ -294,22 +296,28 @@ export async function updateBooking(
       throw new Error("La fecha de salida debe ser posterior a la de entrada.");
     }
 
-    // Re-verificar disponibilidad contra la habitación DESTINO (puede ser
-    // distinta de la actual si se arrastra a otra columna del calendario).
-    const isAvailable = await checkAvailability(targetRoomId, checkIn, checkOut, id);
-    if (!isAvailable) {
-      throw new Error(
-        "Las nuevas fechas u habitación generan un conflicto con otra reserva existente."
-      );
-    }
-
-    const room = data.roomId
+    const targetRoom = data.roomId
       ? await prisma.room.findUnique({ where: { id: data.roomId } })
       : previous.room;
-    if (!room) throw new Error("Habitación no encontrada.");
 
-    const nights = differenceInDays(checkOut, checkIn);
-    recomputedTotal = parseFloat((parseFloat(room.basePrice.toString()) * nights).toFixed(2));
+    if (data.roomId) {
+      if (!targetRoom) throw new Error("Habitación no encontrada.");
+      if (targetRoom.type !== previous.roomType) {
+        throw new Error("La habitación elegida no es del tipo reservado.");
+      }
+    }
+
+    if (targetRoomId && targetRoom) {
+      const isAvailable = await checkAvailability(targetRoomId, checkIn, checkOut, id);
+      if (!isAvailable) {
+        throw new Error(
+          "Las nuevas fechas u habitación generan un conflicto con otra reserva existente."
+        );
+      }
+
+      const nights = differenceInDays(checkOut, checkIn);
+      recomputedTotal = parseFloat((parseFloat(targetRoom.basePrice.toString()) * nights).toFixed(2));
+    }
   }
 
   const updated = await prisma.booking.update({
@@ -323,14 +331,13 @@ export async function updateBooking(
 
   const roomChanged = Boolean(data.roomId && data.roomId !== previous.roomId);
   if (roomChanged) {
-    // Habitación distinta: liberar el rango antiguo en la de origen y
-    // ocupar el nuevo rango en la de destino (son dos habitaciones a la vez
-    // en Channex, no se puede resolver con una sola sincronización).
-    await pushAvailabilityAndRates(previous.roomId, previous.checkInDate, previous.checkOutDate);
-    await pushAvailabilityAndRates(updated.roomId, updated.checkInDate, updated.checkOutDate);
-  } else {
-    // Misma habitación: sincronizar el rango que cubre tanto las fechas
-    // antiguas como las nuevas, por si solo se movió de fecha.
+    if (previous.roomId) {
+      await pushAvailabilityAndRates(previous.roomId, previous.checkInDate, previous.checkOutDate);
+    }
+    if (updated.roomId) {
+      await pushAvailabilityAndRates(updated.roomId, updated.checkInDate, updated.checkOutDate);
+    }
+  } else if (updated.roomId) {
     const syncFrom = previous.checkInDate < updated.checkInDate ? previous.checkInDate : updated.checkInDate;
     const syncTo = previous.checkOutDate > updated.checkOutDate ? previous.checkOutDate : updated.checkOutDate;
     await pushAvailabilityAndRates(updated.roomId, syncFrom, syncTo);
@@ -346,14 +353,16 @@ export async function cancelBooking(id: string) {
     include: { guest: true, room: true },
   });
 
-  await pushAvailabilityAndRates(booking.roomId, booking.checkInDate, booking.checkOutDate);
+  if (booking.roomId) {
+    await pushAvailabilityAndRates(booking.roomId, booking.checkInDate, booking.checkOutDate);
+  }
 
   await sendEmail({
     to: booking.guest.email,
     subject: "Tu reserva ha sido cancelada",
     react: BookingCancelledEmail({
       guestFirstName: booking.guest.firstName,
-      roomName: booking.room.name,
+      roomName: getRoomDisplayName(booking),
       checkInDate: formatDateLong(booking.checkInDate),
       checkOutDate: formatDateLong(booking.checkOutDate),
     }),
@@ -369,7 +378,7 @@ export async function deleteBooking(id: string) {
   await prisma.invoice.deleteMany({ where: { bookingId: id } });
   const deleted = await prisma.booking.delete({ where: { id } });
 
-  if (booking) {
+  if (booking?.roomId) {
     await pushAvailabilityAndRates(booking.roomId, booking.checkInDate, booking.checkOutDate);
   }
 
