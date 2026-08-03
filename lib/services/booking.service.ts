@@ -110,6 +110,17 @@ export async function getBookingById(id: string) {
   });
 }
 
+export async function getPendingRoomAssignmentBookings() {
+  return prisma.booking.findMany({
+    where: {
+      roomId: null,
+      status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+    },
+    include: { guest: true },
+    orderBy: { checkInDate: "asc" },
+  });
+}
+
 export async function createBooking(input: CreateBookingInput) {
   const checkIn = parseISO(input.checkInDate);
   const checkOut = parseISO(input.checkOutDate);

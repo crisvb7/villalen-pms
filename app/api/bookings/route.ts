@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Validaciones básicas
-    if (!body.roomId || !body.checkInDate || !body.checkOutDate || !body.guest) {
+    if ((!body.roomId && !body.roomType) || !body.checkInDate || !body.checkOutDate || !body.guest) {
       return NextResponse.json(
         {
           error:
-            "Faltan campos obligatorios: roomId, checkInDate, checkOutDate, guest.",
+            "Faltan campos obligatorios: roomId o roomType, checkInDate, checkOutDate, guest.",
         },
         { status: 400 }
       );
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
 
     const booking = await createBooking({
       roomId: body.roomId,
+      roomType: body.roomType,
       checkInDate: body.checkInDate,
       checkOutDate: body.checkOutDate,
       adults: body.adults ?? 1,
