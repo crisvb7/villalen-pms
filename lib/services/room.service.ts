@@ -4,12 +4,14 @@
 import { prisma } from "@/lib/prisma";
 import { parseISO, isValid, addDays } from "date-fns";
 import { pushAvailabilityAndRates } from "@/lib/services/channex.service";
+import { RoomType } from "@prisma/client";
 
 export interface CreateRoomData {
   name: string;
   description?: string;
   capacity: number;
   basePrice: number;
+  type?: RoomType;
   amenities?: string[];
   imageUrl?: string;
 }
@@ -54,6 +56,7 @@ export async function createRoom(data: CreateRoomData) {
       description: data.description,
       capacity: data.capacity,
       basePrice: data.basePrice,
+      type: data.type ?? RoomType.DOUBLE,
       amenities: data.amenities ?? [],
       imageUrl: data.imageUrl,
     },

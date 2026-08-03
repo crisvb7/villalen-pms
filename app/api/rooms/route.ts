@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, description, capacity, basePrice, amenities, imageUrl } = body;
+    const { name, description, capacity, basePrice, amenities, imageUrl, type } = body;
 
     if (!name || !capacity || !basePrice) {
       return NextResponse.json(
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       description,
       capacity: Number(capacity),
       basePrice: Number(basePrice),
+      type,
       amenities: amenities ?? [],
       imageUrl,
     });

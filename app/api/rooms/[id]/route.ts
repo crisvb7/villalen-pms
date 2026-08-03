@@ -52,6 +52,7 @@ export async function PATCH(
       description: body.description,
       capacity: body.capacity ? Number(body.capacity) : undefined,
       basePrice: body.basePrice ? Number(body.basePrice) : undefined,
+      type: body.type,
       isClean: body.isClean,
       amenities: body.amenities,
       imageUrl: body.imageUrl,
