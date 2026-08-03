@@ -1,6 +1,9 @@
 "use client";
 // app/reserva/page.tsx
 // Motor de Reservas Público — Paso a paso
+// El huésped elige un TIPO de habitación (Doble / Apartamento), no una
+// habitación física concreta — el personal asigna la habitación real desde
+// el backoffice antes de la llegada (ver /admin/calendario).
 // Si hay Stripe configurado (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY), el paso 3
 // guarda la tarjeta del huésped (tokenizada) y la reserva queda confirmada
 // al momento. Si no, se mantiene el flujo original de transferencia bancaria.
@@ -15,20 +18,35 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
-interface Room {
-  id: string;
-  name: string;
-  description: string | null;
+type RoomTypeKey = "DOUBLE" | "APARTMENT";
+
+interface RoomTypeOption {
+  type: RoomTypeKey;
+  available: boolean;
+  price: number;
   capacity: number;
-  basePrice: string;
-  amenities: string[];
 }
+
+const ROOM_TYPE_CONTENT: Record<RoomTypeKey, { label: string; description: string; amenities: string[] }> = {
+  DOUBLE: {
+    label: "Habitación Doble",
+    description:
+      "Habitación acogedora con cama doble y baño privado, pensada para una estancia cómoda en plena naturaleza asturiana.",
+    amenities: ["WiFi", "Calefacción", "Baño privado", "Ropa de cama incluida"],
+  },
+  APARTMENT: {
+    label: "Apartamento",
+    description:
+      "Dos habitaciones unidas con un único baño — ideal para familias o grupos que buscan más espacio e independencia dentro de la casa.",
+    amenities: ["WiFi", "Calefacción", "Baño privado", "Más espacio", "Ideal para grupos"],
+  },
+};
 
 interface BookingConfirmation {
   id: string;
   totalAmount: string;
   status: string;
-  room: { name: string };
+  roomType: RoomTypeKey;
   checkInDate: string;
   checkOutDate: string;
   guest: { firstName: string; lastName: string; email: string };
@@ -55,7 +73,7 @@ interface GuestForm {
 
 // ── Paso 3: formulario de datos + tokenización de tarjeta ──────────────────
 function BookingFormStep({
-  selectedRoom,
+  selectedType,
   checkIn,
   checkOut,
   guests,
@@ -63,7 +81,7 @@ function BookingFormStep({
   onBack,
   onSuccess,
 }: {
-  selectedRoom: Room;
+  selectedType: RoomTypeOption;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -137,7 +155,7 @@ function BookingFormStep({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          roomId: selectedRoom.id,
+          roomType: selectedType.type,
           checkInDate: checkIn,
           checkOutDate: checkOut,
           adults: guests,
@@ -174,11 +192,10 @@ function BookingFormStep({
         <h2 className="font-serif text-3xl text-stone-800">Tus datos</h2>
       </div>
 
-      {/* Resumen de la reserva */}
       <div className="card p-5 mb-6 bg-amber-50 border-amber-200">
         <div className="flex justify-between items-start">
           <div>
-            <p className="font-medium text-stone-800">{selectedRoom.name}</p>
+            <p className="font-medium text-stone-800">{ROOM_TYPE_CONTENT[selectedType.type].label}</p>
             <p className="text-sm text-stone-500 mt-0.5">
               {checkIn && formatDateEs(checkIn)} → {checkOut && formatDateEs(checkOut)}
             </p>
@@ -189,7 +206,7 @@ function BookingFormStep({
           </div>
           <div className="text-right">
             <p className="font-serif text-2xl text-stone-900">
-              {formatCurrency(Number(selectedRoom.basePrice) * nights)}
+              {formatCurrency(selectedType.price * nights)}
             </p>
             <p className="text-xs text-stone-400">Total estimado</p>
           </div>
@@ -325,8 +342,8 @@ function ReservaPageContent() {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [roomTypes, setRoomTypes] = useState<RoomTypeOption[]>([]);
+  const [selectedType, setSelectedType] = useState<RoomTypeOption | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
@@ -338,7 +355,6 @@ function ReservaPageContent() {
       ? Math.max(0, differenceInDays(parseISO(checkOut), parseISO(checkIn)))
       : 0;
 
-  // ── Paso 1: Buscar disponibilidad ────────────────────────────────────────
   const performSearch = async (ci: string, co: string, g: number) => {
     setError("");
     setLoading(true);
@@ -349,7 +365,7 @@ function ReservaPageContent() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setRooms(data.data);
+      setRoomTypes(data.data);
       setStep("results");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al buscar.");
@@ -367,8 +383,6 @@ function ReservaPageContent() {
     await performSearch(checkIn, checkOut, guests);
   };
 
-  // ── Prefill desde el widget de villalen.es (?checkIn=&checkOut=&guests=) ──
-  // Si vienen los tres parámetros y son válidos, saltamos directo a resultados.
   useEffect(() => {
     const qpCheckIn = searchParams.get("checkIn");
     const qpCheckOut = searchParams.get("checkOut");
@@ -389,15 +403,13 @@ function ReservaPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Paso 2: Seleccionar habitación ───────────────────────────────────────
-  const handleSelectRoom = (room: Room) => {
-    setSelectedRoom(room);
+  const handleSelectType = (type: RoomTypeOption) => {
+    setSelectedType(type);
     setStep("form");
   };
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Header */}
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
           <a href="https://www.villalen.es" className="group">
@@ -408,13 +420,12 @@ function ReservaPageContent() {
               Motor de Reservas
             </p>
           </a>
-          {/* Indicador de pasos */}
           <div className="hidden md:flex items-center gap-3 text-xs text-stone-400">
             {(["search", "results", "form", "success"] as Step[]).map(
               (s, i) => {
                 const labels: Record<Step, string> = {
                   search: "1. Fechas",
-                  results: "2. Habitación",
+                  results: "2. Tipo de alojamiento",
                   form: "3. Tus datos",
                   success: "4. Confirmación",
                 };
@@ -437,7 +448,6 @@ function ReservaPageContent() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-12">
-        {/* ── PASO 1: BÚSQUEDA ── */}
         {step === "search" && (
           <div className="max-w-2xl mx-auto">
             <div className="mb-10 text-center">
@@ -510,7 +520,7 @@ function ReservaPageContent() {
                 className="btn-primary w-full"
                 disabled={loading}
               >
-                {loading ? "Buscando…" : "Ver habitaciones disponibles →"}
+                {loading ? "Buscando…" : "Ver disponibilidad →"}
               </button>
             </form>
 
@@ -522,13 +532,12 @@ function ReservaPageContent() {
           </div>
         )}
 
-        {/* ── PASO 2: RESULTADOS ── */}
         {step === "results" && (
           <div>
             <div className="mb-8 flex items-center justify-between">
               <div>
                 <h2 className="font-serif text-3xl text-stone-800">
-                  Habitaciones disponibles
+                  Tipos de alojamiento disponibles
                 </h2>
                 <p className="text-sm text-stone-500 mt-1">
                   {nights} {nights === 1 ? "noche" : "noches"} ·{" "}
@@ -545,14 +554,14 @@ function ReservaPageContent() {
               </button>
             </div>
 
-            {rooms.length === 0 ? (
+            {roomTypes.length === 0 ? (
               <div className="card p-12 text-center">
                 <p className="text-4xl mb-4">😔</p>
                 <h3 className="font-serif text-2xl text-stone-700 mb-2">
                   No hay disponibilidad
                 </h3>
                 <p className="text-stone-500 mb-6">
-                  No encontramos habitaciones libres para esas fechas o número
+                  No encontramos alojamiento libre para esas fechas o número
                   de huéspedes. Prueba con otras fechas.
                 </p>
                 <button onClick={() => setStep("search")} className="btn-secondary">
@@ -561,40 +570,39 @@ function ReservaPageContent() {
               </div>
             ) : (
               <div className="grid gap-4">
-                {rooms.map((room) => {
-                  const total = Number(room.basePrice) * nights;
+                {roomTypes.map((rt) => {
+                  const content = ROOM_TYPE_CONTENT[rt.type];
+                  const total = rt.price * nights;
                   return (
-                    <div key={room.id} className="card p-6 flex flex-col md:flex-row gap-6">
+                    <div key={rt.type} className="card p-6 flex flex-col md:flex-row gap-6">
                       <div className="h-36 w-full md:w-48 flex-shrink-0 bg-stone-100 flex items-center justify-center text-4xl">
                         🏡
                       </div>
                       <div className="flex-1">
                         <h3 className="font-serif text-2xl text-stone-800 mb-1">
-                          {room.name}
+                          {content.label}
                         </h3>
                         <p className="text-xs text-stone-400 mb-3">
-                          Hasta {room.capacity} personas
+                          Hasta {rt.capacity} personas
                         </p>
                         <p className="text-sm text-stone-500 mb-4 leading-relaxed">
-                          {room.description}
+                          {content.description}
                         </p>
-                        {room.amenities.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-4">
-                            {room.amenities.slice(0, 5).map((a) => (
-                              <span
-                                key={a}
-                                className="bg-stone-100 text-stone-600 text-xs px-2 py-1"
-                              >
-                                {a}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {content.amenities.map((a) => (
+                            <span
+                              key={a}
+                              className="bg-stone-100 text-stone-600 text-xs px-2 py-1"
+                            >
+                              {a}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                       <div className="flex flex-col items-end justify-between min-w-[160px]">
                         <div className="text-right">
                           <p className="text-xs text-stone-400">
-                            {formatCurrency(room.basePrice)} / noche
+                            {formatCurrency(rt.price)} / noche
                           </p>
                           <p className="font-serif text-3xl text-stone-900">
                             {formatCurrency(total)}
@@ -604,7 +612,7 @@ function ReservaPageContent() {
                           </p>
                         </div>
                         <button
-                          onClick={() => handleSelectRoom(room)}
+                          onClick={() => handleSelectType(rt)}
                           className="btn-primary mt-4 w-full"
                         >
                           Seleccionar →
@@ -618,11 +626,10 @@ function ReservaPageContent() {
           </div>
         )}
 
-        {/* ── PASO 3: FORMULARIO DE DATOS ── */}
-        {step === "form" && selectedRoom && (
+        {step === "form" && selectedType && (
           <Elements stripe={stripePromise}>
             <BookingFormStep
-              selectedRoom={selectedRoom}
+              selectedType={selectedType}
               checkIn={checkIn}
               checkOut={checkOut}
               guests={guests}
@@ -636,7 +643,6 @@ function ReservaPageContent() {
           </Elements>
         )}
 
-        {/* ── PASO 4: ÉXITO ── */}
         {step === "success" && confirmation && (
           <div className="max-w-xl mx-auto text-center">
             <div className="card p-10">
@@ -680,7 +686,7 @@ function ReservaPageContent() {
                     Alojamiento
                   </span>
                   <span className="text-sm text-stone-700">
-                    {confirmation.room.name}
+                    {ROOM_TYPE_CONTENT[confirmation.roomType].label}
                   </span>
                 </div>
                 <div className="flex justify-between px-4 py-3">
