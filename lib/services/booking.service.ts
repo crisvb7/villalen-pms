@@ -164,7 +164,7 @@ export async function createBooking(input: CreateBookingInput) {
       );
     }
     const reference = await prisma.room.findFirst({
-      where: { type: roomType },
+      where: { type: roomType, capacity: { gte: input.adults + (input.children ?? 0) } },
       orderBy: { basePrice: "asc" },
     });
     if (!reference) throw new Error("No hay habitaciones configuradas de ese tipo.");
@@ -328,6 +328,13 @@ export async function updateBooking(
 
       const nights = differenceInDays(checkOut, checkIn);
       recomputedTotal = parseFloat((parseFloat(targetRoom.basePrice.toString()) * nights).toFixed(2));
+    } else if (!targetRoomId) {
+      const isAvailable = await checkRoomTypeAvailability(previous.roomType, checkIn, checkOut, id);
+      if (!isAvailable) {
+        throw new Error(
+          "No quedan habitaciones de ese tipo disponibles para las fechas seleccionadas. Por favor, elige otras fechas."
+        );
+      }
     }
   }
 
