@@ -67,7 +67,6 @@ export default function CalendarioPage() {
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [hoveredDay, setHoveredDay] = useState<Date | null>(null);
   const [banner, setBanner] = useState<{ type: "error" | "success"; message: string } | null>(null);
 
   const [quickCreate, setQuickCreate] = useState<QuickCreateTarget | null>(null);
@@ -328,21 +327,17 @@ export default function CalendarioPage() {
                   </th>
                   {days.map((day) => {
                     const today = isToday(day);
-                    const isHovered = hoveredDay ? isSameDay(hoveredDay, day) : false;
                     return (
                       <th
                         key={day.toISOString()}
-                        onMouseEnter={() => setHoveredDay(day)}
-                        onMouseLeave={() => setHoveredDay(null)}
                         className={cn(
                           "sticky top-0 z-10 border-b py-2 text-center text-xs font-medium w-[150px] min-w-[150px] transition-colors",
                           today
-                            ? isHovered
-                              ? "bg-violet-700 border-violet-700"
-                              : "bg-violet-600 border-violet-600"
+                            ? "bg-violet-600 border-violet-600 hover:bg-violet-700"
                             : cn(
                                 "border-stone-100",
-                                isHovered ? "bg-stone-200" : isWeekend(day) ? "bg-stone-100" : "bg-stone-50"
+                                isWeekend(day) ? "bg-stone-100" : "bg-stone-50",
+                                "hover:bg-stone-200"
                               )
                         )}
                       >
@@ -367,7 +362,6 @@ export default function CalendarioPage() {
                     {days.map((day) => {
                       const booking = getBooking(day, room.id);
                       const today = isToday(day);
-                      const isHovered = hoveredDay ? isSameDay(hoveredDay, day) : false;
                       const isDragTarget = editMode && draggingId && (!booking || booking.id === draggingId);
                       return (
                         <td
@@ -377,14 +371,12 @@ export default function CalendarioPage() {
                           onClick={() => {
                             if (!booking) openQuickCreate(room, day);
                           }}
-                          onMouseEnter={() => setHoveredDay(day)}
-                          onMouseLeave={() => setHoveredDay(null)}
                           className={cn(
                             "border-b border-r p-0.5 text-center transition-colors",
                             today ? "border-l-2 border-r-2 border-l-violet-300 border-r-violet-300 bg-violet-50/50" : "border-stone-50",
                             !booking && "cursor-pointer",
-                            !booking && !isHovered && isWeekend(day) && !today && "bg-stone-50/60",
-                            isHovered && (today ? "bg-violet-100" : "bg-stone-200/70"),
+                            !booking && isWeekend(day) && !today && "bg-stone-50/60",
+                            today ? "hover:bg-violet-100" : "hover:bg-stone-200/70",
                             isDragTarget && !booking && "bg-emerald-50 outline outline-1 outline-emerald-300"
                           )}
                         >
