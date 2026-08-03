@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn, formatDate } from "@/lib/utils";
 import AdminProviders from "./providers";
@@ -42,6 +42,7 @@ export default function AdminLayout({
 
 function AdminChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
   const [pendingBookings, setPendingBookings] = useState<PendingAssignmentBooking[]>([]);
@@ -52,7 +53,7 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
       .then((r) => r.json())
       .then((data) => setPendingBookings(data.data ?? []))
       .catch(() => {});
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   // La pantalla de login no lleva el sidebar/backoffice alrededor.
   if (pathname === "/admin/login") {
