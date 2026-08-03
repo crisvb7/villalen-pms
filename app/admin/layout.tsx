@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn, formatDate } from "@/lib/utils";
@@ -35,7 +35,9 @@ export default function AdminLayout({
 }) {
   return (
     <AdminProviders>
-      <AdminChrome>{children}</AdminChrome>
+      <Suspense>
+        <AdminChrome>{children}</AdminChrome>
+      </Suspense>
     </AdminProviders>
   );
 }
