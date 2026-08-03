@@ -95,6 +95,7 @@ export async function getYearStats(year: number): Promise<YearStats> {
   // ── Rendimiento por habitación ─────────────────────────────────────────
   const roomMap = new Map<string, { roomName: string; bookings: number; revenue: number }>();
   for (const b of bookings) {
+    if (!b.roomId || !b.room) continue;
     const entry = roomMap.get(b.roomId) ?? { roomName: b.room.name, bookings: 0, revenue: 0 };
     entry.bookings += 1;
     entry.revenue += parseFloat(b.totalAmount.toString());

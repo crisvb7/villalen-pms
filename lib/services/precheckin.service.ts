@@ -18,7 +18,8 @@ export async function getBookingForPrecheckin(bookingId: string) {
     checkOutDate: booking.checkOutDate,
     status: booking.status,
     precheckinCompletedAt: booking.precheckinCompletedAt,
-    room: { name: booking.room.name },
+    roomType: booking.roomType,
+    room: booking.room ? { name: booking.room.name } : null,
     guest: {
       firstName: booking.guest.firstName,
       lastName: booking.guest.lastName,

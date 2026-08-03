@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/client";
 import { BookingConfirmationEmail } from "@/lib/email/templates/BookingConfirmationEmail";
-import { formatDateLong, formatCurrency } from "@/lib/utils";
+import { formatDateLong, formatCurrency, getRoomDisplayName } from "@/lib/utils";
 import { requireAuth } from "@/lib/auth";
 
 export async function POST(
@@ -37,7 +37,7 @@ export async function POST(
           booking.status === "PENDING" ? "Hemos recibido tu solicitud de reserva" : "Tu reserva está confirmada",
         react: BookingConfirmationEmail({
           guestFirstName: booking.guest.firstName,
-          roomName: booking.room.name,
+          roomName: getRoomDisplayName(booking),
           checkInDate: formatDateLong(booking.checkInDate),
           checkOutDate: formatDateLong(booking.checkOutDate),
           totalAmount: formatCurrency(booking.totalAmount.toString()),

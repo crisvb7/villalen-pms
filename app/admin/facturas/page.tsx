@@ -2,7 +2,7 @@
 // app/admin/facturas/page.tsx
 
 import { Fragment, useEffect, useState } from "react";
-import { formatDate, formatCurrency, PAYMENT_METHOD_LABELS } from "@/lib/utils";
+import { formatDate, formatCurrency, PAYMENT_METHOD_LABELS, ROOM_TYPE_LABELS } from "@/lib/utils";
 
 interface InvoiceExtra {
   id: string;
@@ -21,8 +21,9 @@ interface Invoice {
   booking: {
     checkInDate: string;
     checkOutDate: string;
+    roomType: string;
     guest: { firstName: string; lastName: string; email: string };
-    room: { name: string };
+    room: { name: string } | null;
   };
 }
 
@@ -149,7 +150,9 @@ export default function FacturasPage() {
                       </p>
                       <p className="text-xs text-stone-400">{invoice.booking.guest.email}</p>
                     </td>
-                    <td className="px-4 py-3 text-stone-700">{invoice.booking.room.name}</td>
+                    <td className="px-4 py-3 text-stone-700">
+                      {invoice.booking.room?.name ?? ROOM_TYPE_LABELS[invoice.booking.roomType]}
+                    </td>
                     <td className="px-4 py-3 text-right font-medium text-stone-800">
                       {formatCurrency(invoice.total)}
                     </td>

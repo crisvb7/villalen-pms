@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 import { getAllBookings } from "@/lib/services/booking.service";
 import { getCleaningStatus } from "@/lib/services/room.service";
-import { formatDate, formatCurrency, STATUS_LABELS, STATUS_COLORS } from "@/lib/utils";
+import { formatDate, formatCurrency, STATUS_LABELS, STATUS_COLORS, getRoomDisplayName } from "@/lib/utils";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -126,7 +126,11 @@ export default async function AdminDashboard() {
                     {booking.guest.firstName} {booking.guest.lastName}
                   </p>
                   <p className="text-xs text-stone-400">
-                    {booking.room.name} · {booking.adults} adultos
+                    {getRoomDisplayName(booking)}
+                    {!booking.roomId && (
+                      <span className="ml-1.5 text-amber-600 font-medium">· Sin asignar</span>
+                    )}
+                    {" · "}{booking.adults} adultos
                     {booking.children > 0 ? `, ${booking.children} niños` : ""}
                   </p>
                 </div>

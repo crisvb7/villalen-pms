@@ -6,7 +6,7 @@
 // según el Real Decreto 933/2021.
 
 import { prisma } from "@/lib/prisma";
-import { formatDate, detectDocumentType } from "@/lib/utils";
+import { formatDate, detectDocumentType, ROOM_TYPE_LABELS } from "@/lib/utils";
 import { format } from "date-fns";
 import { ESTABLISHMENT } from "@/lib/establishment";
 
@@ -65,7 +65,7 @@ export async function generateTravelerRecordXML(
     <Identificador>${escapeXml(bookingId)}</Identificador>
     <FechaEntrada>${format(booking.checkInDate, "yyyy-MM-dd")}</FechaEntrada>
     <FechaSalida>${format(booking.checkOutDate, "yyyy-MM-dd")}</FechaSalida>
-    <NumeroHabitacion>${escapeXml(room?.name ?? "N/A")}</NumeroHabitacion>
+    <NumeroHabitacion>${escapeXml(room?.name ?? ROOM_TYPE_LABELS[booking.roomType])}</NumeroHabitacion>
     <NumeroAdultos>${booking.adults}</NumeroAdultos>
     <NumeroMenores>${booking.children}</NumeroMenores>
     <Canal>${escapeXml(booking.source)}</Canal>
@@ -101,7 +101,7 @@ export async function generateTravelerRecordXML(
   console.log(`📌 Reserva:  ${bookingId}`);
   console.log(`👤 Titular:  ${guest.firstName} ${guest.lastName}`);
   console.log(`🪪  Documento: ${documentType} - ${guest.documentId}`);
-  console.log(`🏠 Habitación: ${room?.name}`);
+  console.log(`🏠 Habitación: ${room?.name ?? ROOM_TYPE_LABELS[booking.roomType]}`);
   console.log(
     `📅 Estancia: ${formatDate(booking.checkInDate)} → ${formatDate(booking.checkOutDate)}`
   );

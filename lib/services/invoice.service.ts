@@ -11,7 +11,7 @@ import { renderPdfBuffer } from "@/lib/pdf/render";
 import { getHeroImage, getLogoImage } from "@/lib/pdf/assets";
 import { sendEmail } from "@/lib/email/client";
 import { InvoiceEmail } from "@/lib/email/templates/InvoiceEmail";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getRoomDisplayName } from "@/lib/utils";
 
 export const IVA_RATE = 0.10; // IVA turístico reducido (10%)
 
@@ -201,7 +201,7 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
         email: booking.guest.email,
         phone: booking.guest.phone,
       },
-      roomName: booking.room.name,
+      roomName: getRoomDisplayName(booking),
       pricePerNight,
       accommodationTotal: accommodationTotal.toFixed(2),
       checkInDate: booking.checkInDate,

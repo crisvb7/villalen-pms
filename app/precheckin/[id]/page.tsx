@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { scanMrzFromImage } from "@/lib/utils/mrz-scan";
+import { ROOM_TYPE_LABELS } from "@/lib/utils";
 
 interface BookingInfo {
   id: string;
@@ -14,7 +15,8 @@ interface BookingInfo {
   checkOutDate: string;
   status: string;
   precheckinCompletedAt: string | null;
-  room: { name: string };
+  roomType: string;
+  room: { name: string } | null;
   guest: {
     firstName: string;
     lastName: string;
@@ -151,7 +153,9 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
         ) : (
           <>
             <div className="card p-5 mb-6 bg-amber-50 border-amber-200">
-              <p className="font-medium text-stone-800">{booking.room.name}</p>
+              <p className="font-medium text-stone-800">
+                {booking.room?.name ?? ROOM_TYPE_LABELS[booking.roomType]}
+              </p>
               <p className="text-sm text-stone-500 mt-0.5">
                 {formatDateEs(booking.checkInDate)} → {formatDateEs(booking.checkOutDate)}
               </p>

@@ -120,7 +120,9 @@ export async function getAvailableRooms(
     select: { roomId: true },
   });
 
-  const conflictingRoomIds = roomsWithConflicts.map((b) => b.roomId);
+  const conflictingRoomIds = roomsWithConflicts
+    .map((b) => b.roomId)
+    .filter((id): id is string => id !== null);
 
   return prisma.room.findMany({
     where: {
