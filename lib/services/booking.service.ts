@@ -4,7 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { parseISO, differenceInDays } from "date-fns";
-import { BookingStatus, BookingSource } from "@prisma/client";
+import { BookingStatus, BookingSource, RoomType } from "@prisma/client";
 import { CreateBookingInput } from "@/lib/types";
 import { pushAvailabilityAndRates } from "@/lib/services/channex.service";
 import { sendEmail } from "@/lib/email/client";
@@ -33,6 +33,49 @@ export async function checkAvailability(
   });
 
   return conflictingBooking === null; // true = disponible
+}
+
+// Comprueba si queda al menos una habitación del tipo libre para TODO el
+// rango [checkIn, checkOut), contando tanto reservas ya asignadas a una
+// habitación de ese tipo como reservas web todavía sin asignar de ese tipo.
+// Se hace un barrido noche a noche (no un simple conteo de solapes) porque
+// un conteo simple rechazaría reservas válidas cuando las reservas
+// existentes no coinciden todas en las mismas noches.
+export async function checkRoomTypeAvailability(
+  type: RoomType,
+  checkIn: Date,
+  checkOut: Date,
+  excludeBookingId?: string
+): Promise<boolean> {
+  const totalRoomsOfType = await prisma.room.count({ where: { type } });
+  if (totalRoomsOfType === 0) return false;
+
+  const overlapping = await prisma.booking.findMany({
+    where: {
+      id: excludeBookingId ? { not: excludeBookingId } : undefined,
+      status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
+      OR: [{ roomId: null, roomType: type }, { room: { type } }],
+      AND: [
+        { checkInDate: { lt: checkOut } },
+        { checkOutDate: { gt: checkIn } },
+      ],
+    },
+    select: { checkInDate: true, checkOutDate: true },
+  });
+
+  const events = overlapping.flatMap((b) => [
+    { date: b.checkInDate.getTime(), delta: 1 },
+    { date: b.checkOutDate.getTime(), delta: -1 },
+  ]);
+  events.sort((a, b) => a.date - b.date || a.delta - b.delta);
+
+  let concurrent = 0;
+  for (const e of events) {
+    concurrent += e.delta;
+    if (concurrent >= totalRoomsOfType) return false;
+  }
+
+  return true;
 }
 
 // ── CRUD Reservas ─────────────────────────────────────────────────────────
