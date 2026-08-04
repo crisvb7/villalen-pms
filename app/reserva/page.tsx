@@ -30,14 +30,20 @@ interface RoomTypeOption {
 
 const ROOM_TYPE_CONTENT: Record<
   RoomTypeKey,
-  { label: string; description: string; amenities: string[]; image: string; imageAlt: string }
+  { label: string; description: string; amenities: string[]; images: string[]; imageAlt: string }
 > = {
   DOUBLE: {
     label: "Habitación Doble",
     description:
-      "Habitación acogedora con cama doble y baño privado, pensada para una estancia cómoda en plena naturaleza asturiana. Cada una de nuestras habitaciones dobles tiene su propia decoración e identidad — la que te enseñamos aquí es un ejemplo.",
+      "Habitación acogedora con cama doble y baño privado, pensada para una estancia cómoda en plena naturaleza asturiana. Cada una de nuestras habitaciones dobles tiene su propia decoración e identidad — las que te enseñamos aquí son un ejemplo.",
     amenities: ["WiFi", "Calefacción", "Baño privado", "Ropa de cama incluida"],
-    image: "/images/rooms/doble-1.jpg",
+    images: [
+      "/images/rooms/doble-1.jpg",
+      "/images/rooms/doble-2.jpg",
+      "/images/rooms/doble-3.jpg",
+      "/images/rooms/doble-4.jpg",
+      "/images/rooms/doble-5.jpg",
+    ],
     imageAlt: "Habitación doble de Villalén",
   },
   APARTMENT: {
@@ -45,10 +51,46 @@ const ROOM_TYPE_CONTENT: Record<
     description:
       "Dos habitaciones unidas con un único baño — ideal para familias o grupos que buscan más espacio e independencia dentro de la casa.",
     amenities: ["WiFi", "Calefacción", "Baño privado", "Más espacio", "Ideal para grupos"],
-    image: "/images/rooms/apartamento-1.jpg",
+    images: [
+      "/images/rooms/apartamento-1.jpg",
+      "/images/rooms/apartamento-2.jpg",
+      "/images/rooms/apartamento-3.jpg",
+      "/images/rooms/apartamento-4.jpg",
+    ],
     imageAlt: "Apartamento del Trasgu en Villalén",
   },
 };
+
+// ── Galería con auto-fundido para las tarjetas de tipo de alojamiento ──────
+function RoomTypeGallery({ images, alt }: { images: string[]; alt: string }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % images.length);
+    }, 2800);
+    return () => clearInterval(id);
+  }, [images.length]);
+
+  return (
+    <div className="relative h-48 md:h-36 w-full md:w-48 flex-shrink-0 bg-stone-100 overflow-hidden">
+      {images.map((src, i) => (
+        <Image
+          key={src}
+          src={src}
+          alt={alt}
+          fill
+          sizes="(min-width: 768px) 192px, 100vw"
+          priority={i === 0}
+          className={`object-cover transition-opacity duration-1000 ease-in-out ${
+            i === index ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
 
 interface BookingConfirmation {
   id: string;
@@ -596,15 +638,7 @@ function ReservaPageContent() {
                   const total = rt.price * nights;
                   return (
                     <div key={rt.type} className="card p-6 flex flex-col md:flex-row gap-6">
-                      <div className="relative h-48 md:h-36 w-full md:w-48 flex-shrink-0 bg-stone-100 overflow-hidden">
-                        <Image
-                          src={content.image}
-                          alt={content.imageAlt}
-                          fill
-                          sizes="(min-width: 768px) 192px, 100vw"
-                          className="object-cover"
-                        />
-                      </div>
+                      <RoomTypeGallery images={content.images} alt={content.imageAlt} />
                       <div className="flex-1">
                         <h3 className="font-serif text-2xl text-stone-800 mb-1">
                           {content.label}
