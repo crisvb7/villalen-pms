@@ -82,6 +82,10 @@ function CalendarioPageContent() {
     ? bookings.find((b) => b.id === assignBookingId) ?? null
     : null;
 
+  const draggingBooking = draggingId
+    ? bookings.find((b) => b.id === draggingId) ?? null
+    : null;
+
   const [quickCreate, setQuickCreate] = useState<QuickCreateTarget | null>(null);
   const [checkInInput, setCheckInInput] = useState("");
   const [checkOutInput, setCheckOutInput] = useState("");
@@ -145,6 +149,12 @@ function CalendarioPageContent() {
     });
 
     return !hasConflict;
+  };
+
+  const isAssignableCell = (room: Room, day: Date) => {
+    if (!assigningBooking) return false;
+    if (!isSameDay(day, parseISO(assigningBooking.checkInDate))) return false;
+    return isRoomEligibleForAssignment(room);
   };
 
   const cancelAssignment = () => {
@@ -242,6 +252,7 @@ function CalendarioPageContent() {
 
   const handleDragOver = (e: DragEvent<HTMLTableCellElement>, room: Room, day: Date) => {
     if (!editMode || !draggingId) return;
+    if (draggingBooking && room.type !== draggingBooking.roomType) return; // tipo de habitación distinto: no permitir
     const targetBooking = getBooking(day, room.id);
     if (targetBooking && targetBooking.id !== draggingId) return; // ocupado por otra reserva: no permitir
     e.preventDefault();
@@ -250,12 +261,18 @@ function CalendarioPageContent() {
   const handleDrop = async (e: DragEvent<HTMLTableCellElement>, room: Room, day: Date) => {
     e.preventDefault();
     if (!editMode || !draggingId) return;
-    const targetBooking = getBooking(day, room.id);
-    if (targetBooking && targetBooking.id !== draggingId) return;
 
     const booking = bookings.find((b) => b.id === draggingId);
     setDraggingId(null);
     if (!booking) return;
+
+    if (room.type !== booking.roomType) {
+      setBanner({ type: "error", message: `${room.name} no es del tipo de habitación reservado (${ROOM_TYPE_LABELS[booking.roomType]}).` });
+      return;
+    }
+
+    const targetBooking = getBooking(day, room.id);
+    if (targetBooking && targetBooking.id !== draggingId) return;
 
     const nights = differenceInDays(parseISO(booking.checkOutDate), parseISO(booking.checkInDate));
     const newCheckIn = day;
@@ -449,8 +466,12 @@ function CalendarioPageContent() {
                     {days.map((day) => {
                       const booking = getBooking(day, room.id);
                       const today = isToday(day);
-                      const isDragTarget = editMode && draggingId && (!booking || booking.id === draggingId);
-                      const isAssignTarget = Boolean(assigningBooking) && isRoomEligibleForAssignment(room);
+                      const isDragTarget =
+                        editMode &&
+                        draggingId &&
+                        (!booking || booking.id === draggingId) &&
+                        (!draggingBooking || room.type === draggingBooking.roomType);
+                      const isAssignTarget = isAssignableCell(room, day);
                       const isAssignBlocked = Boolean(assigningBooking) && !isAssignTarget;
                       return (
                         <td
@@ -460,7 +481,7 @@ function CalendarioPageContent() {
                           onClick={() => {
                             if (assigningBooking) {
                               if (assigning) return;
-                              if (isRoomEligibleForAssignment(room)) {
+                              if (isAssignableCell(room, day)) {
                                 handleAssignRoom(room);
                               }
                               return;

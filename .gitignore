@@ -41,3 +41,4 @@ next-env.d.ts
 
 # Secreto suelto que se coló en el repo — el valor real vive en .env.local
 nextauth_secret.txt
+.env*
