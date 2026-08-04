@@ -9,6 +9,7 @@
 // al momento. Si no, se mantiene el flujo original de transferencia bancaria.
 
 import { Suspense, useEffect, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { format, parseISO, differenceInDays, isValid } from "date-fns";
 import { es } from "date-fns/locale";
@@ -27,18 +28,25 @@ interface RoomTypeOption {
   capacity: number;
 }
 
-const ROOM_TYPE_CONTENT: Record<RoomTypeKey, { label: string; description: string; amenities: string[] }> = {
+const ROOM_TYPE_CONTENT: Record<
+  RoomTypeKey,
+  { label: string; description: string; amenities: string[]; image: string; imageAlt: string }
+> = {
   DOUBLE: {
     label: "Habitación Doble",
     description:
-      "Habitación acogedora con cama doble y baño privado, pensada para una estancia cómoda en plena naturaleza asturiana.",
+      "Habitación acogedora con cama doble y baño privado, pensada para una estancia cómoda en plena naturaleza asturiana. Cada una de nuestras habitaciones dobles tiene su propia decoración e identidad — la que te enseñamos aquí es un ejemplo.",
     amenities: ["WiFi", "Calefacción", "Baño privado", "Ropa de cama incluida"],
+    image: "/images/rooms/doble-1.jpg",
+    imageAlt: "Habitación doble de Villalén",
   },
   APARTMENT: {
     label: "Apartamento",
     description:
       "Dos habitaciones unidas con un único baño — ideal para familias o grupos que buscan más espacio e independencia dentro de la casa.",
     amenities: ["WiFi", "Calefacción", "Baño privado", "Más espacio", "Ideal para grupos"],
+    image: "/images/rooms/apartamento-1.jpg",
+    imageAlt: "Apartamento del Trasgu en Villalén",
   },
 };
 
@@ -447,18 +455,31 @@ function ReservaPageContent() {
         </div>
       </header>
 
+      {step === "search" && (
+        <div className="relative h-[38vh] min-h-[260px]">
+          <Image
+            src="/images/hero-villalen.jpg"
+            alt="Casa de aldea Villalén, en Cuerres, Ribadesella"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-900/85 via-stone-900/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 mx-auto max-w-5xl px-6 py-8">
+            <p className="text-xs uppercase tracking-[0.25em] text-white/70 mb-2">
+              Cuerres, Ribadesella — Asturias
+            </p>
+            <h2 className="font-serif italic text-3xl md:text-4xl text-white">
+              ¿Cuándo nos visitas?
+            </h2>
+          </div>
+        </div>
+      )}
+
       <main className="mx-auto max-w-5xl px-6 py-12">
         {step === "search" && (
           <div className="max-w-2xl mx-auto">
-            <div className="mb-10 text-center">
-              <p className="text-xs uppercase tracking-widest text-amber-700 mb-2">
-                Disponibilidad en tiempo real
-              </p>
-              <h2 className="font-serif text-4xl text-stone-800">
-                ¿Cuándo nos visitas?
-              </h2>
-            </div>
-
             <form onSubmit={handleSearch} className="card p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
@@ -575,8 +596,14 @@ function ReservaPageContent() {
                   const total = rt.price * nights;
                   return (
                     <div key={rt.type} className="card p-6 flex flex-col md:flex-row gap-6">
-                      <div className="h-36 w-full md:w-48 flex-shrink-0 bg-stone-100 flex items-center justify-center text-4xl">
-                        🏡
+                      <div className="relative h-48 md:h-36 w-full md:w-48 flex-shrink-0 bg-stone-100 overflow-hidden">
+                        <Image
+                          src={content.image}
+                          alt={content.imageAlt}
+                          fill
+                          sizes="(min-width: 768px) 192px, 100vw"
+                          className="object-cover"
+                        />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-serif text-2xl text-stone-800 mb-1">
