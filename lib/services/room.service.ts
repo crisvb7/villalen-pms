@@ -151,6 +151,7 @@ export async function getCleaningStatus() {
       name: true,
       isClean: true,
       capacity: true,
+      type: true,
       bookings: {
         where: {
           status: { in: ["CHECKED_IN"] },

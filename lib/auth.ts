@@ -5,7 +5,9 @@
 import { type AuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { verifyMobileToken } from "@/lib/mobile-auth";
 
 export const authOptions: AuthOptions = {
   session: { strategy: "jwt" },
@@ -47,8 +49,19 @@ export const authOptions: AuthOptions = {
 /**
  * Para usar en rutas de API: devuelve el usuario logueado o null.
  * Uso: `const user = await requireAuth(); if (!user) return 401;`
+ *
+ * Acepta dos formas de autenticación, para que las mismas rutas /api/*
+ * sirvan a la web (cookie de NextAuth) y a la app móvil (JWT en el header
+ * "Authorization: Bearer <token>", ver lib/mobile-auth.ts).
  */
 export async function requireAuth() {
   const session = await getServerSession(authOptions);
-  return session?.user ?? null;
+  if (session?.user) return session.user;
+
+  const authHeader = headers().get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return verifyMobileToken(authHeader.slice(7));
+  }
+
+  return null;
 }
