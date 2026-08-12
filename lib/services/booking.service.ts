@@ -80,12 +80,23 @@ export async function checkRoomTypeAvailability(
 
 // ── CRUD Reservas ─────────────────────────────────────────────────────────
 
+// El hash del código de acceso a la app de huéspedes nunca debe salir hacia
+// el navegador del backoffice: aunque es un hash, el código de origen es
+// corto (6 dígitos) y crackearlo offline a partir del hash es factible, así
+// que el hash solo debe vivir en el servidor (ver guest-access.service.ts).
+function omitGuestAccessHash<T extends { guestAccessCodeHash: string | null }>(
+  booking: T
+): Omit<T, "guestAccessCodeHash"> {
+  const { guestAccessCodeHash: _omit, ...rest } = booking;
+  return rest;
+}
+
 export async function getAllBookings(filters?: {
   status?: BookingStatus;
   from?: Date;
   to?: Date;
 }) {
-  return prisma.booking.findMany({
+  const bookings = await prisma.booking.findMany({
     where: {
       status: filters?.status,
       checkInDate: filters?.from ? { gte: filters.from } : undefined,
@@ -97,10 +108,11 @@ export async function getAllBookings(filters?: {
     },
     orderBy: { checkInDate: "asc" },
   });
+  return bookings.map(omitGuestAccessHash);
 }
 
 export async function getBookingById(id: string) {
-  return prisma.booking.findUnique({
+  const booking = await prisma.booking.findUnique({
     where: { id },
     include: {
       guest: true,
@@ -108,6 +120,7 @@ export async function getBookingById(id: string) {
       invoices: true,
     },
   });
+  return booking ? omitGuestAccessHash(booking) : null;
 }
 
 export async function getPendingRoomAssignmentBookings() {

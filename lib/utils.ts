@@ -135,6 +135,20 @@ export const SOURCE_LABELS: Record<string, string> = {
   PHONE: "Teléfono",
 };
 
+// ── Dificultad de ruta (guía de senderismo, app de huéspedes) ─────────────
+
+export const ROUTE_DIFFICULTY_LABELS: Record<string, string> = {
+  EASY: "Fácil",
+  MODERATE: "Moderada",
+  HARD: "Difícil",
+};
+
+export const ROUTE_DIFFICULTY_COLORS: Record<string, string> = {
+  EASY: "bg-sage-100 text-sage-800 border-sage-300",
+  MODERATE: "bg-terracotta-100 text-terracotta-800 border-terracotta-300",
+  HARD: "bg-red-100 text-red-800 border-red-200",
+};
+
 // ── Tipo de habitación ────────────────────────────────────────────────────────
 
 export const ROOM_TYPE_LABELS: Record<string, string> = {

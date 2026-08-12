@@ -41,6 +41,8 @@ interface Booking {
   precheckinCompletedAt: string | null;
   sesSubmittedAt: string | null;
   sesSubmissionError: string | null;
+  guestAccessCodeSetAt: string | null;
+  guestDisplayName: string | null;
 }
 
 export default function AdminReservasPage() {
@@ -53,6 +55,7 @@ export default function AdminReservasPage() {
   const [invoicing, setInvoicing] = useState<string | null>(null);
   const [sendingSes, setSendingSes] = useState<string | null>(null);
   const [resendingEmail, setResendingEmail] = useState<string | null>(null);
+  const [generatingGuestAccess, setGeneratingGuestAccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBookings();
@@ -122,6 +125,37 @@ export default function AdminReservasPage() {
     const link = `${window.location.origin}/precheckin/${id}`;
     await navigator.clipboard.writeText(link);
     alert("Enlace de precheckin copiado al portapapeles.");
+  };
+
+  const handleGenerateGuestAccess = async (id: string, hasCode: boolean) => {
+    if (
+      hasCode &&
+      !confirm(
+        "Ya hay un código activo para esta reserva. Generar uno nuevo invalidará el acceso del huésped actual (y volverá a pedirle el nombre la próxima vez). ¿Continuar?"
+      )
+    )
+      return;
+
+    setGeneratingGuestAccess(id);
+    try {
+      const res = await fetch(`/api/bookings/${id}/guest-access`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "Error al generar el código.");
+        return;
+      }
+      const code: string = data.data.code;
+      await navigator.clipboard.writeText(code).catch(() => {});
+      alert(
+        `Código de acceso a la app de huéspedes: ${code}\n\n` +
+          "Compártelo con el huésped (de palabra, en una tarjeta o por email). " +
+          "No podrás volver a verlo — ya se ha copiado al portapapeles.\n\n" +
+          "Se ha invalidado cualquier código anterior de esta reserva."
+      );
+      await fetchBookings();
+    } finally {
+      setGeneratingGuestAccess(null);
+    }
   };
 
   const handleSendSes = async (id: string) => {
@@ -304,6 +338,11 @@ export default function AdminReservasPage() {
                             ⚠ Error envío Policía
                           </span>
                         )}
+                        {booking.guestAccessCodeSetAt && (
+                          <span className="text-xs text-villalen-600 block">
+                            🔑 App{booking.guestDisplayName ? ` · ${booking.guestDisplayName}` : " (código sin usar)"}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-stone-600">
                         {formatDate(booking.checkInDate)}
@@ -345,6 +384,21 @@ export default function AdminReservasPage() {
                               className="chip bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
                             >
                               🔗 Precheckin
+                            </button>
+                          )}
+                          {!["CANCELLED", "CHECKED_OUT"].includes(booking.status) && (
+                            <button
+                              onClick={() =>
+                                handleGenerateGuestAccess(booking.id, Boolean(booking.guestAccessCodeSetAt))
+                              }
+                              disabled={generatingGuestAccess === booking.id}
+                              className="chip bg-villalen-50 text-villalen-800 border-villalen-200 hover:bg-villalen-200"
+                            >
+                              {generatingGuestAccess === booking.id
+                                ? "Generando…"
+                                : booking.guestAccessCodeSetAt
+                                  ? "🔑 Regenerar código app"
+                                  : "🔑 Código app huésped"}
                             </button>
                           )}
                           <button

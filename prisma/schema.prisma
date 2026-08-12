@@ -51,16 +51,16 @@ enum RoomType {
 
 // ─── HUÉSPEDES ────────────────────────────────────────────────────────────────
 model Guest {
-  id         String   @id @default(cuid())
-  firstName  String
-  lastName   String
-  documentId String   // DNI / NIE / Pasaporte — NUNCA datos bancarios
-  email      String
-  phone      String?
-  nationality String? @default("ES")
-  birthDate  DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String    @id @default(cuid())
+  firstName   String
+  lastName    String
+  documentId  String // DNI / NIE / Pasaporte — NUNCA datos bancarios
+  email       String
+  phone       String?
+  nationality String?   @default("ES")
+  birthDate   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   bookings Booking[]
 
@@ -84,8 +84,8 @@ model Booking {
   children     Int           @default(0)
 
   // Datos del Channel Manager externo (si aplica)
-  externalId   String?       @unique // ID desde Channex u otro Channel Manager
-  channelRef   String?       // Referencia del canal
+  externalId String? @unique // ID desde Channex u otro Channel Manager
+  channelRef String? // Referencia del canal
 
   // TPV Virtual (Stripe) — solo IDs, nunca datos de tarjeta (ver aviso PCI-DSS arriba)
   stripeCustomerId      String?
@@ -99,27 +99,137 @@ model Booking {
   sesSubmittedAt     DateTime?
   sesSubmissionError String?
 
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  // App de huéspedes — acceso mediante código generado por el personal (web o
+  // app de staff), sin registro. El código se guarda hasheado; nunca en claro.
+  guestAccessCodeHash  String?
+  // Se pisa cada vez que el personal regenera el código — sirve para saber si
+  // hay que volver a pedirle el nombre al huésped (nueva estancia = nuevo código).
+  guestAccessCodeSetAt DateTime?
+  // Nombre "de cortesía" que el huésped introduce la primera vez que usa el
+  // código vigente, solo para personalizar la app (saludo, chat) — no toca los
+  // datos legales de Guest (documento, ficha de viajero, etc.).
+  guestDisplayName     String?
+  guestLastLoginAt     DateTime?
 
-  guest    Guest     @relation(fields: [guestId], references: [id])
-  room     Room?     @relation(fields: [roomId], references: [id])
-  invoices Invoice[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guest           Guest                 @relation(fields: [guestId], references: [id])
+  room            Room?                 @relation(fields: [roomId], references: [id])
+  invoices        Invoice[]
+  serviceRequests GuestServiceRequest[]
+  messages        GuestMessage[]
 
   @@map("bookings")
 }
 
+// ─── APP DE HUÉSPEDES ──────────────────────────────────────────────────────────
+// Peticiones diarias que el huésped marca desde la app (desayuno del día
+// siguiente, cena del peregrino, limpieza de habitación). Una fila por
+// combinación reserva+día+tipo — volver a marcar/desmarcar reutiliza la misma
+// fila (ver @@unique) para conservar el historial en vez de borrar y recrear.
+model GuestServiceRequest {
+  id        String             @id @default(cuid())
+  bookingId String
+  date      DateTime           @db.Date
+  type      GuestServiceType
+  status    GuestServiceStatus @default(REQUESTED)
+  notes     String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@unique([bookingId, date, type])
+  @@map("guest_service_requests")
+}
+
+enum GuestServiceType {
+  BREAKFAST
+  DINNER
+  CLEANING
+}
+
+enum GuestServiceStatus {
+  REQUESTED
+  CANCELLED
+}
+
+// Chat entre el huésped y el personal (recepción). Vive en el hilo de su
+// reserva — no hay conversaciones separadas de la estancia a la que pertenecen.
+model GuestMessage {
+  id        String        @id @default(cuid())
+  bookingId String
+  sender    MessageSender
+  body      String
+  readAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId, createdAt])
+  @@map("guest_messages")
+}
+
+enum MessageSender {
+  GUEST
+  STAFF
+}
+
+// Guía de rutas de senderismo/Camino de Santiago alrededor del alojamiento —
+// contenido editorial que gestiona el personal, no ligado a ninguna reserva.
+// Sin fotos ni track GPX por ahora: la app de huéspedes usa icono + color en
+// su lugar (evita hacer pasar una foto de stock por una foto real del
+// sitio); si se añaden más adelante, este es el modelo al que colgarlas.
+model Route {
+  id               String          @id @default(cuid())
+  name             String
+  // Texto libre (p.ej. "Costa", "Cultural", "Montaña") a propósito: no es un
+  // enum para que el personal pueda añadir una categoría nueva sin necesitar
+  // una migración.
+  category         String
+  // Etapa oficial de un Camino de Santiago — se destaca en la app con la
+  // tarjeta grande y el badge de concha.
+  isCaminoStage    Boolean         @default(false)
+  distanceKm       Decimal         @db.Decimal(5, 1)
+  durationMin      Int
+  elevationGainM   Int             @default(0)
+  elevationLossM   Int             @default(0)
+  difficulty       RouteDifficulty @default(MODERATE)
+  // Nombre de icono de Ionicons (@expo/vector-icons) — se valida contra una
+  // lista blanca en el servicio, no aquí.
+  icon             String          @default("walk-outline")
+  description      String
+  pointsOfInterest String[]        @default([])
+  // Permite ocultarla (cierre estacional, obras) sin borrar el contenido.
+  isPublished      Boolean         @default(true)
+  // Orden manual dentro de "más rutas cercanas" (el destino de Camino
+  // siempre va primero si isCaminoStage = true, independientemente de esto).
+  order            Int             @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("routes")
+}
+
+enum RouteDifficulty {
+  EASY
+  MODERATE
+  HARD
+}
+
 // ─── FACTURAS ─────────────────────────────────────────────────────────────────
 model Invoice {
-  id        String   @id @default(cuid())
-  bookingId String
-  issueDate DateTime @default(now())
-  total     Decimal  @db.Decimal(10, 2) // Alojamiento + servicios adicionales
-  tax       Decimal  @db.Decimal(10, 2) // IVA (10%, tipo reducido de hostelería)
-  subtotal  Decimal  @db.Decimal(10, 2)
-  pdfUrl    String?  // URL al PDF generado (almacenado externamente)
-  invoiceNumber String @unique // Número de factura correlativo
-  isPaid    Boolean  @default(false)
+  id            String         @id @default(cuid())
+  bookingId     String
+  issueDate     DateTime       @default(now())
+  total         Decimal        @db.Decimal(10, 2) // Alojamiento + servicios adicionales
+  tax           Decimal        @db.Decimal(10, 2) // IVA (10%, tipo reducido de hostelería)
+  subtotal      Decimal        @db.Decimal(10, 2)
+  pdfUrl        String? // URL al PDF generado (almacenado externamente)
+  invoiceNumber String         @unique // Número de factura correlativo
+  isPaid        Boolean        @default(false)
   paymentMethod PaymentMethod? // Cómo se cobró (tarjeta, efectivo...); se fija al marcar como pagada
 
   createdAt DateTime @default(now())
@@ -133,10 +243,10 @@ model Invoice {
 
 // Servicios adicionales facturados junto al alojamiento (desayuno, etc.).
 model InvoiceExtra {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   invoiceId   String
   description String
-  amount      Decimal  @db.Decimal(10, 2) // Importe con IVA incluido, igual que el total de la reserva
+  amount      Decimal @db.Decimal(10, 2) // Importe con IVA incluido, igual que el total de la reserva
 
   createdAt DateTime @default(now())
 
@@ -213,21 +323,21 @@ enum CashMovementType {
 // Foto del precio en el momento del presupuesto (sin FK a Room): no reserva
 // inventario ni se ve afectado si luego cambia el precio o se borra la habitación.
 model Quote {
-  id            String      @id @default(cuid())
-  quoteNumber   String      @unique // PRES-YYYY-NNNN
-  guestName     String
-  guestEmail    String
-  guestPhone    String?
-  roomName      String
-  pricePerNight Decimal     @db.Decimal(10, 2)
-  checkInDate   DateTime    @db.Date
-  checkOutDate  DateTime    @db.Date
-  subtotal      Decimal     @db.Decimal(10, 2)
-  tax           Decimal     @db.Decimal(10, 2)
-  total         Decimal     @db.Decimal(10, 2)
-  status        QuoteStatus @default(DRAFT)
-  validUntil    DateTime    @db.Date
-  notes         String?
+  id                 String      @id @default(cuid())
+  quoteNumber        String      @unique // PRES-YYYY-NNNN
+  guestName          String
+  guestEmail         String
+  guestPhone         String?
+  roomName           String
+  pricePerNight      Decimal     @db.Decimal(10, 2)
+  checkInDate        DateTime    @db.Date
+  checkOutDate       DateTime    @db.Date
+  subtotal           Decimal     @db.Decimal(10, 2)
+  tax                Decimal     @db.Decimal(10, 2)
+  total              Decimal     @db.Decimal(10, 2)
+  status             QuoteStatus @default(DRAFT)
+  validUntil         DateTime    @db.Date
+  notes              String?
   convertedBookingId String?
 
   createdAt DateTime @default(now())
@@ -237,11 +347,11 @@ model Quote {
 }
 
 enum QuoteStatus {
-  DRAFT    // Borrador
-  SENT     // Enviado al cliente
+  DRAFT // Borrador
+  SENT // Enviado al cliente
   ACCEPTED // Aceptado (puede o no estar ya convertido en reserva)
   REJECTED // Rechazado
-  EXPIRED  // Caducado (pasada la fecha de validez)
+  EXPIRED // Caducado (pasada la fecha de validez)
 }
 
 // ─── USUARIOS (backoffice) ─────────────────────────────────────────────────────
@@ -257,18 +367,18 @@ model User {
 
 // ─── ENUMERACIONES ────────────────────────────────────────────────────────────
 enum BookingStatus {
-  PENDING    // Reserva creada, pendiente de confirmación/pago
-  CONFIRMED  // Confirmada y con depósito/pago recibido
-  CANCELLED  // Cancelada
-  CHECKED_IN  // Huésped en el establecimiento
+  PENDING // Reserva creada, pendiente de confirmación/pago
+  CONFIRMED // Confirmada y con depósito/pago recibido
+  CANCELLED // Cancelada
+  CHECKED_IN // Huésped en el establecimiento
   CHECKED_OUT // Huésped ha salido
 }
 
 enum BookingSource {
-  WEB      // Motor de reservas propio
-  BOOKING  // Booking.com (via Channel Manager)
-  AIRBNB   // Airbnb (via Channel Manager)
-  MANUAL   // Entrada manual por staff
-  CHANNEX  // Cualquier canal via Channex
-  PHONE    // Reserva por teléfono
+  WEB // Motor de reservas propio
+  BOOKING // Booking.com (via Channel Manager)
+  AIRBNB // Airbnb (via Channel Manager)
+  MANUAL // Entrada manual por staff
+  CHANNEX // Cualquier canal via Channex
+  PHONE // Reserva por teléfono
 }

@@ -1,24 +1,28 @@
 // lib/auth-context.tsx
-// Estado de sesión global. Al arrancar, intenta cargar el token guardado y
-// valida contra /api/mobile/auth/me; expone signIn/signOut para las pantallas.
+// Estado de sesión global del huésped. Al arrancar, intenta cargar el token
+// guardado y validarlo contra /api/guest-app/me; expone signInWithCode /
+// submitName / signOut para las pantallas. Tres estados posibles para el
+// árbol de navegación (ver app/_layout.tsx): sin token → login; token pero
+// sin nombre → captura de nombre; token con nombre → app.
 
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 import * as api from "@/lib/api";
 import { clearStoredToken, getStoredToken, setStoredToken } from "@/lib/storage";
-import type { MobileUser } from "@/lib/types";
+import type { GuestBooking } from "@/lib/types";
 
 interface AuthContextValue {
-  user: MobileUser | null;
+  booking: GuestBooking | null;
   isLoading: boolean;
   error: string | null;
-  signIn: (email: string, password: string) => Promise<void>;
+  signInWithCode: (code: string) => Promise<void>;
+  submitName: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState<MobileUser | null>(null);
+  const [booking, setBooking] = useState<GuestBooking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,8 +34,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
       try {
-        const { user } = await api.fetchMe();
-        setUser(user);
+        const { data } = await api.fetchMe();
+        setBooking(data);
       } catch (err) {
         // Token inválido/expirado (respuesta del servidor): cerramos sesión.
         // Fallo de red (sin WiFi/datos y sin caché previa): mantenemos el
@@ -45,12 +49,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     })();
   }, []);
 
-  async function signIn(email: string, password: string) {
+  async function signInWithCode(code: string) {
     setError(null);
     try {
-      const { token, user } = await api.login(email, password);
-      await setStoredToken(token);
-      setUser(user);
+      const { data } = await api.loginWithCode(code);
+      await setStoredToken(data.token);
+      setBooking(data.booking);
     } catch (err) {
       setError(
         err instanceof api.ApiError || err instanceof api.OfflineError
@@ -61,13 +65,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }
 
+  async function submitName(name: string) {
+    setError(null);
+    try {
+      const { data } = await api.setDisplayName(name);
+      setBooking(data);
+    } catch (err) {
+      setError(err instanceof api.ApiError ? err.message : "No se pudo guardar el nombre.");
+      throw err;
+    }
+  }
+
   async function signOut() {
     await clearStoredToken();
-    setUser(null);
+    setBooking(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ booking, isLoading, error, signInWithCode, submitName, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

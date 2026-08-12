@@ -26,6 +26,7 @@ const navItems = [
   { href: "/admin/huespedes", label: "Huéspedes", icon: "👤" },
   { href: "/admin/habitaciones", label: "Habitaciones", icon: "🏠" },
   { href: "/admin/limpieza", label: "Limpieza", icon: "🧹" },
+  { href: "/admin/rutas", label: "Rutas", icon: "🥾" },
 ];
 
 export default function AdminLayout({

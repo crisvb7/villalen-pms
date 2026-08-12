@@ -3,6 +3,7 @@
 // usa la web; requireAuth() en el backend acepta tanto la cookie de NextAuth
 // como el "Authorization: Bearer <token>" que mandamos aquí.
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "@/lib/config";
 import { getStoredToken } from "@/lib/storage";
 import type {
@@ -29,6 +30,36 @@ export class ApiError extends Error {
   }
 }
 
+// Sin conexión y sin nada guardado en caché para esta ruta.
+export class OfflineError extends Error {
+  constructor() {
+    super("Sin conexión a internet.");
+  }
+}
+
+// Caché local de las últimas respuestas GET, para poder mostrar algo cuando
+// no hay red (ver request() más abajo).
+function cacheKey(path: string) {
+  return `cache:${path}`;
+}
+
+async function setCache(path: string, body: unknown) {
+  try {
+    await AsyncStorage.setItem(cacheKey(path), JSON.stringify(body));
+  } catch {
+    // si falla el guardado en caché no bloqueamos la petición real
+  }
+}
+
+async function getCache<T>(path: string): Promise<T | null> {
+  try {
+    const raw = await AsyncStorage.getItem(cacheKey(path));
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await getStoredToken();
   const headers: Record<string, string> = {
@@ -37,7 +68,32 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const method = (options.method ?? "GET").toUpperCase();
+  const isRead = method === "GET";
+
+  let res: Response;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      res = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch {
+    // Fallo de red (no hay respuesta del servidor). Para lecturas, devolvemos
+    // lo último que se cargó con éxito; para escrituras no hay nada que hacer
+    // offline.
+    if (isRead) {
+      const cached = await getCache<T>(path);
+      if (cached) return cached;
+    }
+    throw new OfflineError();
+  }
 
   let body: unknown = null;
   try {
@@ -52,16 +108,24 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(message, res.status);
   }
 
+  if (isRead) {
+    setCache(path, body);
+  }
+
   return body as T;
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string) {
-  return request<{ token: string; user: MobileUser }>(
+  const result = await request<{ token: string; user: MobileUser }>(
     "/api/mobile/auth/login",
     { method: "POST", body: JSON.stringify({ email, password }) }
   );
+  // Precarga la caché de fetchMe() para que un reinicio sin red, justo
+  // después de iniciar sesión, tenga algo que mostrar.
+  await setCache("/api/mobile/auth/me", { user: result.user });
+  return result;
 }
 
 export async function fetchMe() {
