@@ -3,6 +3,7 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/cron/channex-sync", "schedule": "0 4 * * *" }
+    { "path": "/api/cron/channex-sync", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/guest-access-rotate", "schedule": "0 6 * * *" }
   ]
 }

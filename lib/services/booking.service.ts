@@ -11,6 +11,7 @@ import { sendEmail } from "@/lib/email/client";
 import { BookingConfirmationEmail } from "@/lib/email/templates/BookingConfirmationEmail";
 import { BookingCancelledEmail } from "@/lib/email/templates/BookingCancelledEmail";
 import { formatDateLong, formatCurrency, getRoomDisplayName } from "@/lib/utils";
+import { revokeGuestAccessCode } from "@/lib/services/guest-access.service";
 
 // ── Anti-Overbooking ──────────────────────────────────────────────────────
 
@@ -359,6 +360,18 @@ export async function updateBooking(
     },
     include: { guest: true, room: true },
   });
+
+  const endsStay =
+    data.status &&
+    data.status !== previous.status &&
+    (data.status === BookingStatus.CHECKED_OUT || data.status === BookingStatus.CANCELLED);
+  if (endsStay) {
+    // Best-effort: si falla, no debe tumbar la actualización de la reserva
+    // (el personal siempre puede revocar el acceso a mano después).
+    await revokeGuestAccessCode(id).catch((err) =>
+      console.error("[updateBooking] No se pudo revocar el acceso de huésped", err)
+    );
+  }
 
   const roomChanged = Boolean(data.roomId && data.roomId !== previous.roomId);
   if (roomChanged) {

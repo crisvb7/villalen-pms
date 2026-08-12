@@ -58,6 +58,9 @@ export interface Booking {
   children: number;
   guest: Guest;
   room: Room | null;
+  guestAccessCodeSetAt: string | null;
+  guestDisplayName: string | null;
+  guestAccessCodePlain: string | null;
 }
 
 export interface CleaningRoom {

@@ -8,7 +8,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getRoomDisplayName } from "@/lib/utils";
-import type { Booking, Room } from "@prisma/client";
+import { BookingStatus, type Booking, type Room } from "@prisma/client";
 
 const CODE_LENGTH = 6;
 
@@ -43,11 +43,57 @@ export async function generateGuestAccessCode(bookingId: string): Promise<{
       guestAccessCodeSetAt: new Date(),
       guestDisplayName: null,
       guestLastLoginAt: null,
+      // Generación manual: el personal ya ha visto el código en pantalla,
+      // no hace falta dejarlo en claro en la base de datos.
+      guestAccessCodePlain: null,
     },
     include: { room: true },
   });
 
   return { code, booking };
+}
+
+/**
+ * Genera el código de acceso para las reservas que llegan hoy y todavía no
+ * tienen uno (nadie lo generó a mano de antemano). A diferencia de
+ * generateGuestAccessCode(), aquí SÍ se guarda el código en claro
+ * (guestAccessCodePlain) porque no hay ningún humano delante para verlo en
+ * el momento — se muestra en el panel hasta que el huésped hace login o el
+ * personal lo regenera/revoca a mano.
+ */
+export async function autoGenerateGuestAccessCodesForArrivals(): Promise<{
+  bookingIds: string[];
+}> {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const arrivals = await prisma.booking.findMany({
+    where: {
+      checkInDate: today,
+      status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
+      guestAccessCodeHash: null,
+    },
+    select: { id: true },
+  });
+
+  const bookingIds: string[] = [];
+  for (const { id } of arrivals) {
+    const code = generatePlainCode();
+    const guestAccessCodeHash = await bcrypt.hash(code, 10);
+    await prisma.booking.update({
+      where: { id },
+      data: {
+        guestAccessCodeHash,
+        guestAccessCodeSetAt: new Date(),
+        guestDisplayName: null,
+        guestLastLoginAt: null,
+        guestAccessCodePlain: code,
+      },
+    });
+    bookingIds.push(id);
+  }
+
+  return { bookingIds };
 }
 
 /**
@@ -62,6 +108,7 @@ export async function revokeGuestAccessCode(bookingId: string) {
       guestAccessCodeHash: null,
       guestAccessCodeSetAt: null,
       guestDisplayName: null,
+      guestAccessCodePlain: null,
     },
   });
 }
@@ -114,7 +161,10 @@ export async function getBookingWithRoom(bookingId: string): Promise<BookingWith
 export async function recordGuestLogin(bookingId: string): Promise<BookingWithRoom> {
   return prisma.booking.update({
     where: { id: bookingId },
-    data: { guestLastLoginAt: new Date() },
+    // El huésped ya ha entrado con el código: si estaba pendiente de
+    // mostrar en el panel (generado por el cron de llegadas), ya no hace
+    // falta seguir guardándolo en claro.
+    data: { guestLastLoginAt: new Date(), guestAccessCodePlain: null },
     include: { room: true },
   });
 }

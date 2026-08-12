@@ -110,6 +110,13 @@ model Booking {
   // datos legales de Guest (documento, ficha de viajero, etc.).
   guestDisplayName     String?
   guestLastLoginAt     DateTime?
+  // Copia en claro SOLO para los códigos generados automáticamente por el cron
+  // de llegadas (nadie hizo clic en "generar", así que nadie lo vio en el
+  // momento). Se muestra en el panel para que recepción se lo dé al huésped
+  // en persona, y se borra en cuanto el huésped hace login o el personal
+  // genera/regenera/revoca el código manualmente. Los códigos generados a
+  // mano NUNCA pasan por aquí (siguen sin persistirse en claro).
+  guestAccessCodePlain String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -168,6 +168,21 @@ export async function updateBooking(id: string, input: UpdateBookingInput) {
   });
 }
 
+// Genera (o regenera) el código de acceso a la app de huéspedes. Devuelve el
+// código en texto plano una única vez: no se puede volver a consultar.
+export async function generateGuestAccess(id: string) {
+  return request<{ data: { code: string; bookingId: string } }>(
+    `/api/bookings/${id}/guest-access`,
+    { method: "POST" }
+  );
+}
+
+export async function revokeGuestAccess(id: string) {
+  return request<{ message: string }>(`/api/bookings/${id}/guest-access`, {
+    method: "DELETE",
+  });
+}
+
 export interface CreateBookingInput {
   roomId: string;
   checkInDate: string;

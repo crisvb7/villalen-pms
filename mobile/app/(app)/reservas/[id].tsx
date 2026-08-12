@@ -29,6 +29,7 @@ export default function BookingDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestAccessBusy, setGuestAccessBusy] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -65,6 +66,62 @@ export default function BookingDetailScreen() {
     Alert.alert("Cancelar reserva", "¿Seguro que quieres cancelar esta reserva?", [
       { text: "No", style: "cancel" },
       { text: "Sí, cancelar", style: "destructive", onPress: () => changeStatus("CANCELLED") },
+    ]);
+  }
+
+  async function generateGuestAccess() {
+    if (!booking) return;
+    setGuestAccessBusy(true);
+    try {
+      const res = await api.generateGuestAccess(booking.id);
+      await load();
+      Alert.alert(
+        "Código de acceso generado",
+        `${res.data.code}\n\nApúntalo o dilo al huésped ahora: no podrás volver a verlo. ` +
+          "Cualquier código anterior de esta reserva ha quedado invalidado."
+      );
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "No se pudo generar el código.");
+    } finally {
+      setGuestAccessBusy(false);
+    }
+  }
+
+  function confirmGenerateGuestAccess() {
+    if (!booking) return;
+    if (booking.guestAccessCodeSetAt) {
+      Alert.alert(
+        "Regenerar código",
+        "Ya hay un código activo. Generar uno nuevo invalidará el acceso del huésped actual (y le volverá a pedir el nombre). ¿Continuar?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Sí, regenerar", onPress: generateGuestAccess },
+        ]
+      );
+      return;
+    }
+    generateGuestAccess();
+  }
+
+  function confirmRevokeGuestAccess() {
+    Alert.alert("Revocar acceso", "El huésped no podrá volver a entrar en la app hasta que le generes un código nuevo. ¿Continuar?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Sí, revocar",
+        style: "destructive",
+        onPress: async () => {
+          if (!booking) return;
+          setGuestAccessBusy(true);
+          try {
+            await api.revokeGuestAccess(booking.id);
+            await load();
+          } catch (err) {
+            Alert.alert("Error", err instanceof Error ? err.message : "No se pudo revocar el acceso.");
+          } finally {
+            setGuestAccessBusy(false);
+          }
+        },
+      },
     ]);
   }
 
@@ -121,6 +178,46 @@ export default function BookingDetailScreen() {
       {booking.notes ? (
         <Section title="Notas">
           <Text style={styles.notes}>{booking.notes}</Text>
+        </Section>
+      ) : null}
+
+      {booking.status !== "CANCELLED" ? (
+        <Section title="App de huéspedes">
+          <Row
+            label="Estado"
+            value={
+              booking.guestAccessCodeSetAt
+                ? booking.guestDisplayName
+                  ? `Activo · ${booking.guestDisplayName}`
+                  : "Activo · código sin usar"
+                : "Sin código"
+            }
+          />
+          {booking.guestAccessCodePlain ? (
+            <Text style={styles.pendingCode}>
+              🔑 Código de hoy: {booking.guestAccessCodePlain}
+            </Text>
+          ) : null}
+          <View style={styles.guestAccessActions}>
+            <Pressable
+              style={[styles.button, styles.buttonSecondary, guestAccessBusy && styles.buttonDisabled]}
+              disabled={guestAccessBusy}
+              onPress={confirmGenerateGuestAccess}
+            >
+              <Text style={styles.buttonSecondaryText}>
+                {booking.guestAccessCodeSetAt ? "Regenerar código" : "Generar código"}
+              </Text>
+            </Pressable>
+            {booking.guestAccessCodeSetAt ? (
+              <Pressable
+                style={[styles.button, styles.buttonDanger, guestAccessBusy && styles.buttonDisabled]}
+                disabled={guestAccessBusy}
+                onPress={confirmRevokeGuestAccess}
+              >
+                <Text style={styles.buttonText}>Revocar acceso</Text>
+              </Pressable>
+            ) : null}
+          </View>
         </Section>
       ) : null}
 
@@ -245,6 +342,11 @@ const styles = StyleSheet.create({
   buttonDanger: {
     backgroundColor: colors.danger,
   },
+  buttonSecondary: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   buttonDisabled: {
     opacity: 0.6,
   },
@@ -252,5 +354,25 @@ const styles = StyleSheet.create({
     color: colors.primaryText,
     fontWeight: "600",
     fontSize: 15,
+  },
+  buttonSecondaryText: {
+    color: colors.text,
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  guestAccessActions: {
+    marginTop: 10,
+    gap: 10,
+  },
+  pendingCode: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "#FEF3C7",
+    color: "#92400E",
+    fontWeight: "700",
+    fontSize: 13,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
 });

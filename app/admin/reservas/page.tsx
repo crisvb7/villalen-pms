@@ -43,6 +43,7 @@ interface Booking {
   sesSubmissionError: string | null;
   guestAccessCodeSetAt: string | null;
   guestDisplayName: string | null;
+  guestAccessCodePlain: string | null;
 }
 
 export default function AdminReservasPage() {
@@ -338,10 +339,16 @@ export default function AdminReservasPage() {
                             ⚠ Error envío Policía
                           </span>
                         )}
-                        {booking.guestAccessCodeSetAt && (
-                          <span className="text-xs text-villalen-600 block">
-                            🔑 App{booking.guestDisplayName ? ` · ${booking.guestDisplayName}` : " (código sin usar)"}
+                        {booking.guestAccessCodePlain ? (
+                          <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded block w-fit">
+                            🔑 Código de hoy: {booking.guestAccessCodePlain}
                           </span>
+                        ) : (
+                          booking.guestAccessCodeSetAt && (
+                            <span className="text-xs text-villalen-600 block">
+                              🔑 App{booking.guestDisplayName ? ` · ${booking.guestDisplayName}` : " (código sin usar)"}
+                            </span>
+                          )
                         )}
                       </td>
                       <td className="px-4 py-3 text-stone-600">
