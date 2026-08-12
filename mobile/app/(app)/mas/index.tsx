@@ -39,6 +39,12 @@ export default function MasScreen() {
 
       <Text style={styles.sectionTitle}>Herramientas</Text>
       <HubTile
+        icon="cafe-outline"
+        label="Servicios del día"
+        description="Desayunos, cenas y limpieza pedidos desde la app de huéspedes"
+        href="/mas/servicios"
+      />
+      <HubTile
         icon="people-outline"
         label="Huéspedes"
         description="Historial y fichas de clientes"

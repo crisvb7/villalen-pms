@@ -186,3 +186,28 @@ export interface YearStats {
   };
   availableYears: number[];
 }
+
+// ── App de huéspedes (visto desde el personal) ────────────────────────────
+
+export type GuestServiceType = "BREAKFAST" | "DINNER" | "CLEANING";
+
+export interface GuestServiceRequestItem {
+  id: string;
+  date: string;
+  type: GuestServiceType;
+  status: "REQUESTED" | "CANCELLED";
+}
+
+export interface GuestMessageItem {
+  id: string;
+  sender: "GUEST" | "STAFF";
+  body: string;
+  createdAt: string;
+}
+
+export interface TodayBoardRow {
+  bookingId: string;
+  roomName: string;
+  guestName: string;
+  requests: Record<GuestServiceType, boolean>;
+}

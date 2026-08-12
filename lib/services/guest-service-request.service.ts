@@ -6,8 +6,14 @@
 
 import { parseISO, isValid } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { GuestServiceType, GuestServiceStatus } from "@prisma/client";
+import { GuestServiceType, GuestServiceStatus, BookingStatus } from "@prisma/client";
 import type { Booking } from "@prisma/client";
+
+export const SERVICE_TYPES: GuestServiceType[] = [
+  GuestServiceType.BREAKFAST,
+  GuestServiceType.DINNER,
+  GuestServiceType.CLEANING,
+];
 
 // Hora límite (UTC — todo el proyecto fuerza TZ=UTC, ver README) para cada
 // tipo de petición, como desplazamiento en días respecto al día del
@@ -73,17 +79,23 @@ export async function listServiceRequests(bookingId: string) {
  * permite siempre; marcar (requested = true) respeta el plazo horario de
  * SERVICE_CUTOFFS — el servidor es quien manda, no basta con deshabilitar
  * el toggle en la app.
+ *
+ * `bypassCutoff`: para cuando lo marca el personal (web/app de gestión) en
+ * vez del huésped — p. ej. un huésped llama a recepción después del plazo
+ * pidiendo desayuno igualmente. El huésped nunca puede saltarse el plazo
+ * por su cuenta; el personal sí.
  */
 export async function setServiceRequest(
   booking: Pick<Booking, "id" | "checkInDate" | "checkOutDate">,
   type: GuestServiceType,
   dateInput: string | Date,
-  requested: boolean
+  requested: boolean,
+  options?: { bypassCutoff?: boolean }
 ) {
   const date = normalizeDate(dateInput);
   assertDateWithinStay(booking, date);
 
-  if (requested && !isServiceRequestable(type, date)) {
+  if (requested && !options?.bypassCutoff && !isServiceRequestable(type, date)) {
     throw new Error("Ya ha pasado el plazo para pedir este servicio ese día.");
   }
 
@@ -93,5 +105,59 @@ export async function setServiceRequest(
     where: { bookingId_date_type: { bookingId: booking.id, date, type } },
     update: { status },
     create: { bookingId: booking.id, date, type, status },
+  });
+}
+
+// ── Panel operativo "Hoy" (personal) ────────────────────────────────────
+
+export interface TodayBoardRow {
+  bookingId: string;
+  roomName: string;
+  guestName: string;
+  requests: Record<GuestServiceType, boolean>;
+}
+
+/**
+ * Todas las reservas activas que ocupan una habitación en `date` (misma
+ * regla que getCurrentOccupancy en booking.service.ts), con el estado de
+ * sus 3 peticiones diarias para ese día — para el tablón de "hoy" del
+ * personal (desayunos/cenas/limpiezas), no solo las reservas que ya pidieron
+ * algo, así se puede marcar manualmente cualquiera de las 3.
+ */
+export async function listTodayBoard(dateInput: string | Date): Promise<TodayBoardRow[]> {
+  const date = normalizeDate(dateInput);
+
+  const bookings = await prisma.booking.findMany({
+    where: {
+      checkInDate: { lte: date },
+      checkOutDate: { gt: date },
+      status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
+    },
+    include: { guest: true, room: true },
+    orderBy: [{ room: { name: "asc" } }],
+  });
+
+  const requests = await prisma.guestServiceRequest.findMany({
+    where: { date, bookingId: { in: bookings.map((b) => b.id) }, status: GuestServiceStatus.REQUESTED },
+  });
+
+  const requestedByBooking = new Map<string, Set<GuestServiceType>>();
+  for (const req of requests) {
+    if (!requestedByBooking.has(req.bookingId)) requestedByBooking.set(req.bookingId, new Set());
+    requestedByBooking.get(req.bookingId)!.add(req.type);
+  }
+
+  return bookings.map((booking) => {
+    const requested = requestedByBooking.get(booking.id) ?? new Set<GuestServiceType>();
+    return {
+      bookingId: booking.id,
+      roomName: booking.room?.name ?? "Sin asignar",
+      guestName: `${booking.guest.firstName} ${booking.guest.lastName}`,
+      requests: {
+        BREAKFAST: requested.has(GuestServiceType.BREAKFAST),
+        DINNER: requested.has(GuestServiceType.DINNER),
+        CLEANING: requested.has(GuestServiceType.CLEANING),
+      },
+    };
   });
 }

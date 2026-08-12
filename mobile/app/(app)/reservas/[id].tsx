@@ -8,19 +8,43 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import * as api from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatLongDate, formatMoney } from "@/lib/date";
 import { colors, fonts } from "@/lib/theme";
-import type { Booking, BookingStatus } from "@/lib/types";
+import type {
+  Booking,
+  BookingStatus,
+  GuestMessageItem,
+  GuestServiceRequestItem,
+  GuestServiceType,
+} from "@/lib/types";
 
 const NEXT_STATUS: Partial<Record<BookingStatus, { label: string; next: BookingStatus }>> = {
   PENDING: { label: "Confirmar", next: "CONFIRMED" },
   CONFIRMED: { label: "Marcar entrada", next: "CHECKED_IN" },
   CHECKED_IN: { label: "Marcar salida", next: "CHECKED_OUT" },
 };
+
+const SERVICE_META: { type: GuestServiceType; label: string; icon: string }[] = [
+  { type: "BREAKFAST", label: "Desayuno", icon: "🍳" },
+  { type: "DINNER", label: "Cena", icon: "🍽️" },
+  { type: "CLEANING", label: "Limpieza", icon: "🧹" },
+];
+
+function stayNights(checkInDate: string, checkOutDate: string): string[] {
+  const nights: string[] = [];
+  const cursor = new Date(checkInDate);
+  const end = new Date(checkOutDate);
+  while (cursor < end) {
+    nights.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return nights;
+}
 
 export default function BookingDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -30,12 +54,23 @@ export default function BookingDetailScreen() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guestAccessBusy, setGuestAccessBusy] = useState(false);
+  const [services, setServices] = useState<GuestServiceRequestItem[]>([]);
+  const [togglingService, setTogglingService] = useState<string | null>(null);
+  const [messages, setMessages] = useState<GuestMessageItem[]>([]);
+  const [messageBody, setMessageBody] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await api.fetchBooking(id);
-      setBooking(res.data);
+      const [bookingRes, servicesRes, messagesRes] = await Promise.all([
+        api.fetchBooking(id),
+        api.fetchBookingServices(id),
+        api.fetchBookingMessages(id),
+      ]);
+      setBooking(bookingRes.data);
+      setServices(servicesRes.data);
+      setMessages(messagesRes.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar la reserva.");
     } finally {
@@ -123,6 +158,41 @@ export default function BookingDetailScreen() {
         },
       },
     ]);
+  }
+
+  async function toggleService(dateStr: string, type: GuestServiceType, next: boolean) {
+    if (!booking) return;
+    const key = `${dateStr}-${type}`;
+    setTogglingService(key);
+    try {
+      const res = await api.setBookingService(booking.id, dateStr, type, next);
+      setServices((prev) => {
+        const idx = prev.findIndex((r) => r.date.slice(0, 10) === dateStr && r.type === type);
+        if (idx === -1) return [...prev, res.data];
+        const copy = [...prev];
+        copy[idx] = res.data;
+        return copy;
+      });
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "No se pudo actualizar.");
+    } finally {
+      setTogglingService(null);
+    }
+  }
+
+  async function sendMessage() {
+    const body = messageBody.trim();
+    if (!booking || !body) return;
+    setSendingMessage(true);
+    try {
+      const res = await api.sendBookingMessage(booking.id, body);
+      setMessages((prev) => [...prev, res.data]);
+      setMessageBody("");
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "No se pudo enviar el mensaje.");
+    } finally {
+      setSendingMessage(false);
+    }
   }
 
   if (loading) {
@@ -217,6 +287,79 @@ export default function BookingDetailScreen() {
                 <Text style={styles.buttonText}>Revocar acceso</Text>
               </Pressable>
             ) : null}
+          </View>
+        </Section>
+      ) : null}
+
+      {booking.status !== "CANCELLED" ? (
+        <Section title="Servicios diarios">
+          {stayNights(booking.checkInDate, booking.checkOutDate).map((dateStr) => (
+            <View key={dateStr} style={styles.serviceDayRow}>
+              <Text style={styles.serviceDayLabel}>{formatLongDate(dateStr)}</Text>
+              <View style={styles.serviceChips}>
+                {SERVICE_META.map((meta) => {
+                  const active = services.some(
+                    (r) => r.date.slice(0, 10) === dateStr && r.type === meta.type && r.status === "REQUESTED"
+                  );
+                  const key = `${dateStr}-${meta.type}`;
+                  return (
+                    <Pressable
+                      key={meta.type}
+                      disabled={togglingService === key}
+                      onPress={() => toggleService(dateStr, meta.type, !active)}
+                      style={[
+                        styles.serviceChip,
+                        active ? styles.serviceChipActive : styles.serviceChipInactive,
+                        togglingService === key && styles.buttonDisabled,
+                      ]}
+                    >
+                      <Text style={active ? styles.serviceChipTextActive : styles.serviceChipText}>
+                        {meta.icon} {meta.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+        </Section>
+      ) : null}
+
+      {booking.status !== "CANCELLED" ? (
+        <Section title="Chat con el huésped">
+          {messages.length === 0 ? (
+            <Text style={styles.notes}>Todavía no hay mensajes.</Text>
+          ) : (
+            messages.map((m) => (
+              <View
+                key={m.id}
+                style={[
+                  styles.messageBubble,
+                  m.sender === "STAFF" ? styles.messageBubbleStaff : styles.messageBubbleGuest,
+                ]}
+              >
+                <Text style={m.sender === "STAFF" ? styles.messageTextStaff : styles.messageText}>
+                  {m.body}
+                </Text>
+              </View>
+            ))
+          )}
+          <View style={styles.messageComposer}>
+            <TextInput
+              value={messageBody}
+              onChangeText={setMessageBody}
+              placeholder="Escribe una respuesta…"
+              placeholderTextColor={colors.textMuted}
+              style={styles.messageInput}
+              multiline
+            />
+            <Pressable
+              disabled={sendingMessage || !messageBody.trim()}
+              onPress={sendMessage}
+              style={[styles.button, (sendingMessage || !messageBody.trim()) && styles.buttonDisabled]}
+            >
+              <Text style={styles.buttonText}>Enviar</Text>
+            </Pressable>
           </View>
         </Section>
       ) : null}
@@ -374,5 +517,88 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  serviceDayRow: {
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  serviceDayLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 6,
+    textTransform: "capitalize",
+  },
+  serviceChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  serviceChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  serviceChipActive: {
+    backgroundColor: "#D1FAE5",
+    borderColor: "#A7F3D0",
+  },
+  serviceChipInactive: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+  },
+  serviceChipText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  serviceChipTextActive: {
+    color: "#065F46",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  messageBubble: {
+    maxWidth: "80%",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  messageBubbleGuest: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignSelf: "flex-start",
+  },
+  messageBubbleStaff: {
+    backgroundColor: colors.primary,
+    alignSelf: "flex-end",
+  },
+  messageText: {
+    color: colors.text,
+    fontSize: 14,
+  },
+  messageTextStaff: {
+    color: colors.primaryText,
+    fontSize: 14,
+  },
+  messageComposer: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+    alignItems: "flex-end",
+  },
+  messageInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: colors.text,
+    fontSize: 14,
+    maxHeight: 100,
   },
 });

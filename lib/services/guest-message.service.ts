@@ -52,3 +52,17 @@ export async function countUnread(bookingId: string, reader: MessageSender) {
     where: { bookingId, sender: senderToCount, readAt: null },
   });
 }
+
+/**
+ * Para el listado de reservas del personal: cuántos mensajes sin leer del
+ * huésped tiene cada reserva, de un tirón (evita N consultas, una por fila).
+ */
+export async function countUnreadFromGuestsByBooking(): Promise<Record<string, number>> {
+  const groups = await prisma.guestMessage.groupBy({
+    by: ["bookingId"],
+    where: { sender: MessageSender.GUEST, readAt: null },
+    _count: { _all: true },
+  });
+
+  return Object.fromEntries(groups.map((g) => [g.bookingId, g._count._all]));
+}

@@ -13,12 +13,16 @@ import type {
   CashSession,
   CleaningRoom,
   Expense,
+  GuestMessageItem,
+  GuestServiceRequestItem,
+  GuestServiceType,
   Invoice,
   MobileUser,
   PaymentMethod,
   Quote,
   QuoteStatus,
   Room,
+  TodayBoardRow,
   YearStats,
 } from "@/lib/types";
 
@@ -325,4 +329,41 @@ export async function markInvoicePaid(id: string, paymentMethod?: PaymentMethod)
 
 export async function fetchStats(year: number) {
   return request<{ data: YearStats }>(`/api/stats?year=${year}`);
+}
+
+// ── App de huéspedes (servicios diarios y chat, vistos por el personal) ───
+
+export async function fetchBookingServices(bookingId: string) {
+  return request<{ data: GuestServiceRequestItem[] }>(`/api/bookings/${bookingId}/services`);
+}
+
+export async function setBookingService(
+  bookingId: string,
+  date: string,
+  type: GuestServiceType,
+  requested: boolean
+) {
+  return request<{ data: GuestServiceRequestItem }>(`/api/bookings/${bookingId}/services`, {
+    method: "POST",
+    body: JSON.stringify({ date, type, requested }),
+  });
+}
+
+export async function fetchBookingMessages(bookingId: string) {
+  return request<{ data: GuestMessageItem[] }>(`/api/bookings/${bookingId}/messages`);
+}
+
+export async function sendBookingMessage(bookingId: string, body: string) {
+  return request<{ data: GuestMessageItem }>(`/api/bookings/${bookingId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function fetchTodayServicesBoard(date: string) {
+  return request<{ data: TodayBoardRow[] }>(`/api/services/today?date=${date}`);
+}
+
+export async function fetchUnreadCounts() {
+  return request<{ data: Record<string, number> }>("/api/bookings/unread-counts");
 }

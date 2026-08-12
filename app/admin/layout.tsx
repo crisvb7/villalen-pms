@@ -19,6 +19,7 @@ const navItems = [
   { href: "/admin/estadisticas", label: "Estadísticas", icon: "📊" },
   { href: "/admin/calendario", label: "Calendario", icon: "📆" },
   { href: "/admin/reservas", label: "Reservas", icon: "📅" },
+  { href: "/admin/servicios", label: "Servicios del día", icon: "🍳" },
   { href: "/admin/presupuestos", label: "Presupuestos", icon: "📝" },
   { href: "/admin/facturas", label: "Facturas", icon: "🧾" },
   { href: "/admin/gastos", label: "Gastos", icon: "💸" },
@@ -64,7 +65,7 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="pms-shell min-h-screen flex bg-stone-50">
+    <div className="pms-shell h-screen overflow-hidden flex bg-stone-50">
       {/* Sidebar */}
       <aside
         className={cn(

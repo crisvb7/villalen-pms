@@ -57,9 +57,11 @@ export default function AdminReservasPage() {
   const [sendingSes, setSendingSes] = useState<string | null>(null);
   const [resendingEmail, setResendingEmail] = useState<string | null>(null);
   const [generatingGuestAccess, setGeneratingGuestAccess] = useState<string | null>(null);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchBookings();
+    fetchUnreadCounts();
   }, []);
 
   const fetchBookings = async () => {
@@ -70,6 +72,16 @@ export default function AdminReservasPage() {
       setBookings(data.data ?? []);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUnreadCounts = async () => {
+    try {
+      const res = await fetch("/api/bookings/unread-counts");
+      const data = await res.json();
+      setUnreadCounts(data.data ?? {});
+    } catch {
+      // no bloqueante: el badge simplemente no aparece
     }
   };
 
@@ -302,9 +314,17 @@ export default function AdminReservasPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-medium text-stone-800">
+                        <Link
+                          href={`/admin/reservas/${booking.id}`}
+                          className="font-medium text-stone-800 hover:text-villalen-700 hover:underline"
+                        >
                           {booking.guest.firstName} {booking.guest.lastName}
-                        </p>
+                        </Link>
+                        {unreadCounts[booking.id] > 0 && (
+                          <span className="ml-2 inline-flex items-center justify-center rounded-full bg-terracotta-500 text-white text-[10px] font-semibold w-4 h-4 align-middle">
+                            {unreadCounts[booking.id]}
+                          </span>
+                        )}
                         <p className="text-xs text-stone-400">
                           {booking.guest.email}
                         </p>
