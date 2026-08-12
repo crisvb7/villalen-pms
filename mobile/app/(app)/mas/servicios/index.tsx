@@ -37,18 +37,38 @@ export default function ServiciosHoyScreen() {
   const [rows, setRows] = useState<TodayBoardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [dinnerEnabled, setDinnerEnabled] = useState<boolean | null>(null);
+  const [savingDinnerSetting, setSavingDinnerSetting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.fetchTodayServicesBoard(date);
-      setRows(res.data);
+      const [boardRes, settingsRes] = await Promise.all([
+        api.fetchTodayServicesBoard(date),
+        api.fetchHotelSettings(),
+      ]);
+      setRows(boardRes.data);
+      setDinnerEnabled(settingsRes.data.dinnerServiceEnabled);
     } catch (err) {
       Alert.alert("Error", err instanceof Error ? err.message : "No se pudo cargar el tablón.");
     } finally {
       setLoading(false);
     }
   }, [date]);
+
+  async function toggleDinnerService() {
+    if (dinnerEnabled === null) return;
+    const next = !dinnerEnabled;
+    setSavingDinnerSetting(true);
+    try {
+      await api.setDinnerServiceEnabled(next);
+      setDinnerEnabled(next);
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "No se pudo guardar el ajuste.");
+    } finally {
+      setSavingDinnerSetting(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -79,6 +99,30 @@ export default function ServiciosHoyScreen() {
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}
     >
       <ScreenHeader eyebrow="Operativa" title="Servicios del día" showBack />
+
+      <Card style={styles.dinnerCard}>
+        <View style={styles.dinnerRow}>
+          <View style={styles.dinnerInfo}>
+            <Text style={styles.dinnerTitle}>🍽️ Cena (temporada peregrinos)</Text>
+            <Text style={styles.dinnerSubtitle}>
+              {dinnerEnabled === false ? "Apagada" : "Encendida"}
+            </Text>
+          </View>
+          <Pressable
+            disabled={dinnerEnabled === null || savingDinnerSetting}
+            onPress={toggleDinnerService}
+            style={[
+              styles.chip,
+              dinnerEnabled ? styles.chipActive : styles.chipInactive,
+              (dinnerEnabled === null || savingDinnerSetting) && styles.chipDisabled,
+            ]}
+          >
+            <Text style={dinnerEnabled ? styles.chipTextActive : styles.chipText}>
+              {dinnerEnabled ? "Apagar" : "Encender"}
+            </Text>
+          </Pressable>
+        </View>
+      </Card>
 
       <View style={styles.dateNav}>
         <Pressable style={styles.dateArrow} onPress={() => setDate((d) => addDays(d, -1))} hitSlop={8}>
@@ -136,6 +180,28 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 40,
+  },
+  dinnerCard: {
+    marginBottom: 16,
+  },
+  dinnerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  dinnerInfo: {
+    flexShrink: 1,
+  },
+  dinnerTitle: {
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 15,
+    color: colors.text,
+  },
+  dinnerSubtitle: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   dateNav: {
     flexDirection: "row",

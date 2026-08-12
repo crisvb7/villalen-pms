@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireGuestAuth } from "@/lib/guest-auth";
 import { listServiceRequests, setServiceRequest } from "@/lib/services/guest-service-request.service";
+import { getHotelSettings } from "@/lib/services/hotel-setting.service";
 import { GuestServiceType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +17,11 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  const requests = await listServiceRequests(booking.id);
-  return NextResponse.json({ data: requests });
+  const [requests, settings] = await Promise.all([
+    listServiceRequests(booking.id),
+    getHotelSettings(),
+  ]);
+  return NextResponse.json({ data: requests, dinnerServiceEnabled: settings.dinnerServiceEnabled });
 }
 
 export async function POST(request: NextRequest) {

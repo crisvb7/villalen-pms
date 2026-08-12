@@ -369,7 +369,33 @@ model User {
   name         String
   createdAt    DateTime @default(now())
 
+  pushTokens StaffPushToken[]
+
   @@map("users")
+}
+
+// Ajustes globales del hotel — una sola fila ("singleton"). De momento solo
+// si el servicio de cena está activo (temporada de peregrinos); se puede
+// ampliar añadiendo columnas cuando haga falta otro ajuste global.
+model HotelSetting {
+  id                   String   @id @default("singleton")
+  dinnerServiceEnabled Boolean  @default(true)
+  updatedAt            DateTime @updatedAt
+
+  @@map("hotel_settings")
+}
+
+// Token de dispositivo (APNs, iOS nativo) para mandar notificaciones push al
+// personal — un usuario puede tener varios (varios dispositivos).
+model StaffPushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("staff_push_tokens")
 }
 
 // ─── ENUMERACIONES ────────────────────────────────────────────────────────────

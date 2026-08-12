@@ -134,7 +134,9 @@ export async function fetchMe() {
 // ── Servicios diarios ────────────────────────────────────────────────────
 
 export async function fetchServiceRequests() {
-  return request<{ data: GuestServiceRequest[] }>("/api/guest-app/services");
+  return request<{ data: GuestServiceRequest[]; dinnerServiceEnabled: boolean }>(
+    "/api/guest-app/services"
+  );
 }
 
 export async function setServiceRequest(

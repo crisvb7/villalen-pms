@@ -367,3 +367,22 @@ export async function fetchTodayServicesBoard(date: string) {
 export async function fetchUnreadCounts() {
   return request<{ data: Record<string, number> }>("/api/bookings/unread-counts");
 }
+
+// ── Ajustes del hotel ──────────────────────────────────────────────────────
+
+export interface HotelSettings {
+  id: string;
+  dinnerServiceEnabled: boolean;
+  updatedAt: string;
+}
+
+export async function fetchHotelSettings() {
+  return request<{ data: HotelSettings }>("/api/settings");
+}
+
+export async function setDinnerServiceEnabled(enabled: boolean) {
+  return request<{ data: HotelSettings }>("/api/settings", {
+    method: "PATCH",
+    body: JSON.stringify({ dinnerServiceEnabled: enabled }),
+  });
+}

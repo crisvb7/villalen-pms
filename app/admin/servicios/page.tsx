@@ -2,7 +2,8 @@
 // Tablón operativo del día: qué reservas activas piden desayuno, cena o
 // limpieza — con la posibilidad de marcarlo/desmarcarlo a mano (huésped que
 // llama por teléfono, o corregir un error), igual que puede hacer el
-// huésped desde su app.
+// huésped desde su app. También aquí se enciende/apaga la cena según
+// temporada de peregrinos.
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -31,6 +32,8 @@ export default function ServiciosHoyPage() {
   const [rows, setRows] = useState<BoardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [dinnerEnabled, setDinnerEnabled] = useState<boolean | null>(null);
+  const [savingDinnerSetting, setSavingDinnerSetting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +49,34 @@ export default function ServiciosHoyPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => setDinnerEnabled(data.data?.dinnerServiceEnabled ?? true))
+      .catch(() => {});
+  }, []);
+
+  async function toggleDinnerService() {
+    if (dinnerEnabled === null) return;
+    const next = !dinnerEnabled;
+    setSavingDinnerSetting(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dinnerServiceEnabled: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "No se pudo guardar el ajuste.");
+        return;
+      }
+      setDinnerEnabled(next);
+    } finally {
+      setSavingDinnerSetting(false);
+    }
+  }
 
   async function toggle(bookingId: string, type: string, next: boolean) {
     const key = `${bookingId}-${type}`;
@@ -80,7 +111,7 @@ export default function ServiciosHoyPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
+      <div className="mb-4 flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-serif text-3xl text-stone-800">Servicios del día</h1>
           <p className="text-sm text-stone-500 mt-1">
@@ -100,6 +131,30 @@ export default function ServiciosHoyPage() {
         </div>
       </div>
 
+      <div className="card mb-6 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="font-medium text-stone-800">🍽️ Servicio de cena (temporada de peregrinos)</p>
+          <p className="text-xs text-stone-500 mt-0.5">
+            {dinnerEnabled === false
+              ? "Apagado: los huéspedes no pueden pedir cena desde la app."
+              : "Encendido: los huéspedes pueden pedir cena hasta las 17:00 del mismo día."}
+          </p>
+        </div>
+        <button
+          onClick={toggleDinnerService}
+          disabled={dinnerEnabled === null || savingDinnerSetting}
+          className={cn(
+            "chip whitespace-nowrap",
+            dinnerEnabled
+              ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+              : "bg-stone-100 text-stone-500 border-stone-200",
+            (dinnerEnabled === null || savingDinnerSetting) && "opacity-60"
+          )}
+        >
+          {dinnerEnabled ? "Encendido · apagar" : "Apagado · encender"}
+        </button>
+      </div>
+
       {loading ? (
         <p className="text-stone-400">Cargando…</p>
       ) : rows.length === 0 ? (
@@ -108,34 +163,43 @@ export default function ServiciosHoyPage() {
         </div>
       ) : (
         <div className="card overflow-x-auto p-0">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ minWidth: 640 }}>
             <thead>
               <tr className="border-b border-stone-100">
-                <th className="text-left px-4 py-3 text-stone-400 font-medium">Habitación</th>
-                <th className="text-left px-4 py-3 text-stone-400 font-medium">Huésped</th>
+                <th className="text-left px-4 py-3 text-stone-400 font-medium whitespace-nowrap">
+                  Habitación
+                </th>
+                <th className="text-left px-4 py-3 text-stone-400 font-medium whitespace-nowrap">
+                  Huésped
+                </th>
                 {SERVICE_META.map((meta) => (
-                  <th key={meta.type} className="text-center px-4 py-3 text-stone-400 font-medium">
+                  <th
+                    key={meta.type}
+                    className="text-center px-3 py-3 text-stone-400 font-medium whitespace-nowrap"
+                  >
                     {meta.icon} {meta.label}
                   </th>
                 ))}
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3 whitespace-nowrap" />
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
                 <tr key={row.bookingId} className="border-b border-stone-50 last:border-0">
-                  <td className="px-4 py-3 font-medium text-stone-800">{row.roomName}</td>
-                  <td className="px-4 py-3 text-stone-600">{row.guestName}</td>
+                  <td className="px-4 py-3 font-medium text-stone-800 whitespace-nowrap">
+                    {row.roomName}
+                  </td>
+                  <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{row.guestName}</td>
                   {SERVICE_META.map((meta) => {
                     const active = row.requests[meta.type];
                     const key = `${row.bookingId}-${meta.type}`;
                     return (
-                      <td key={meta.type} className="text-center px-4 py-3">
+                      <td key={meta.type} className="text-center px-3 py-3">
                         <button
                           disabled={toggling === key}
                           onClick={() => toggle(row.bookingId, meta.type, !active)}
                           className={cn(
-                            "chip",
+                            "chip whitespace-nowrap",
                             active
                               ? "bg-emerald-100 text-emerald-800 border-emerald-200"
                               : "bg-stone-100 text-stone-500 border-stone-200",
@@ -147,10 +211,10 @@ export default function ServiciosHoyPage() {
                       </td>
                     );
                   })}
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Link
                       href={`/admin/reservas/${row.bookingId}`}
-                      className="text-xs text-villalen-600 hover:underline whitespace-nowrap"
+                      className="text-xs text-villalen-600 hover:underline"
                     >
                       Ver reserva →
                     </Link>

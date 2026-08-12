@@ -59,8 +59,13 @@ export async function POST(
       return NextResponse.json({ error: "Reserva no encontrada." }, { status: 404 });
     }
 
-    // El personal puede marcar fuera de plazo (el huésped no).
-    const data = await setServiceRequest(booking, type, date, requested, { bypassCutoff: true });
+    // El personal puede marcar fuera de plazo y aunque la cena esté
+    // apagada por temporada (el huésped no puede saltarse ninguna de las
+    // dos cosas).
+    const data = await setServiceRequest(booking, type, date, requested, {
+      bypassCutoff: true,
+      bypassDinnerAvailability: true,
+    });
     return NextResponse.json({ data });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No se pudo guardar el servicio.";

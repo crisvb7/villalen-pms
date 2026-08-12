@@ -172,12 +172,15 @@ export default function BookingDetailPage() {
       <section className="card">
         <h2 className="font-medium text-stone-700 mb-4">Servicios diarios</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ minWidth: 480 }}>
             <thead>
               <tr>
-                <th className="text-left py-2 pr-4 text-stone-400 font-medium">Día</th>
+                <th className="text-left py-2 pr-4 text-stone-400 font-medium whitespace-nowrap">Día</th>
                 {SERVICE_META.map((meta) => (
-                  <th key={meta.type} className="text-center py-2 px-3 text-stone-400 font-medium">
+                  <th
+                    key={meta.type}
+                    className="text-center py-2 px-3 text-stone-400 font-medium whitespace-nowrap"
+                  >
                     {meta.icon} {meta.label}
                   </th>
                 ))}
@@ -186,7 +189,7 @@ export default function BookingDetailPage() {
             <tbody>
               {nights.map((dateStr) => (
                 <tr key={dateStr} className="border-t border-stone-100">
-                  <td className="py-2 pr-4 text-stone-600">{formatDate(dateStr)}</td>
+                  <td className="py-2 pr-4 text-stone-600 whitespace-nowrap">{formatDate(dateStr)}</td>
                   {SERVICE_META.map((meta) => {
                     const active = isRequested(dateStr, meta.type);
                     const key = `${dateStr}-${meta.type}`;
@@ -196,7 +199,7 @@ export default function BookingDetailPage() {
                           disabled={toggling === key}
                           onClick={() => toggleService(dateStr, meta.type, !active)}
                           className={cn(
-                            "chip",
+                            "chip whitespace-nowrap",
                             active
                               ? "bg-emerald-100 text-emerald-800 border-emerald-200"
                               : "bg-stone-100 text-stone-500 border-stone-200",

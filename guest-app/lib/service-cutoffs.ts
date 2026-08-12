@@ -15,8 +15,8 @@ export const SERVICE_CUTOFFS: Record<
   GuestServiceType,
   { dayOffset: number; hour: number; label: string }
 > = {
-  BREAKFAST: { dayOffset: -1, hour: 22, label: "Puedes confirmar hasta las 22:00 del día anterior" },
-  DINNER: { dayOffset: 0, hour: 20, label: "Confirma antes de las 20:00" },
+  BREAKFAST: { dayOffset: -1, hour: 23, label: "Puedes confirmar hasta las 23:00 del día anterior" },
+  DINNER: { dayOffset: 0, hour: 17, label: "Solo peregrinos. Confirma antes de las 17:00" },
   CLEANING: { dayOffset: 0, hour: 11, label: "Puedes pedirla antes de las 11:00" },
 };
 

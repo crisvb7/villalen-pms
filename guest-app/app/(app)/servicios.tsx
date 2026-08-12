@@ -34,6 +34,7 @@ export default function ServiciosScreen() {
   const { booking } = useAuth();
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [requests, setRequests] = useState<GuestServiceRequest[]>([]);
+  const [dinnerServiceEnabled, setDinnerServiceEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submittingType, setSubmittingType] = useState<GuestServiceType | null>(null);
@@ -41,8 +42,9 @@ export default function ServiciosScreen() {
 
   const load = useCallback(async () => {
     try {
-      const { data } = await api.fetchServiceRequests();
+      const { data, dinnerServiceEnabled } = await api.fetchServiceRequests();
       setRequests(data);
+      setDinnerServiceEnabled(dinnerServiceEnabled);
     } finally {
       setLoading(false);
     }
@@ -111,7 +113,8 @@ export default function ServiciosScreen() {
                 (r) => r.type === type && isSameDay(parseISO(r.date), today)
               );
               const requested = match?.status === "REQUESTED";
-              const canRequest = isServiceRequestable(type, today);
+              const dinnerDisabled = type === "DINNER" && !dinnerServiceEnabled;
+              const canRequest = !dinnerDisabled && isServiceRequestable(type, today);
               const submitting = submittingType === type;
 
               return (
@@ -124,7 +127,11 @@ export default function ServiciosScreen() {
                       <Text style={styles.serviceLabel}>{meta.label}</Text>
                       <Text style={styles.serviceDescription}>{meta.description}</Text>
                       <Text style={[styles.cutoff, !canRequest && !requested && styles.cutoffClosed]}>
-                        {canRequest || requested ? cutoff.label : "Plazo cerrado para este día"}
+                        {dinnerDisabled && !requested
+                          ? "No disponible fuera de temporada de peregrinos."
+                          : canRequest || requested
+                            ? cutoff.label
+                            : "Plazo cerrado para este día"}
                       </Text>
                     </View>
                     {submitting ? (
