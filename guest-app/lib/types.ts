@@ -45,6 +45,7 @@ export interface GuestRoute {
   category: string;
   isCaminoStage: boolean;
   distanceKm: string; // Decimal de Prisma → string en JSON, parsear con parseFloat
+  distanceFromHotelKm: string | null; // en coche, para ordenar por cercanía
   durationMin: number;
   elevationGainM: number;
   elevationLossM: number;

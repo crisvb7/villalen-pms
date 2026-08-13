@@ -11,6 +11,7 @@ interface RouteItem {
   category: string;
   isCaminoStage: boolean;
   distanceKm: string;
+  distanceFromHotelKm: string | null;
   durationMin: number;
   elevationGainM: number;
   elevationLossM: number;
@@ -28,6 +29,7 @@ const emptyForm = {
   category: "",
   isCaminoStage: false,
   distanceKm: "",
+  distanceFromHotelKm: "",
   durationMin: "",
   elevationGainM: "0",
   elevationLossM: "0",
@@ -75,6 +77,7 @@ export default function RutasPage() {
       category: route.category,
       isCaminoStage: route.isCaminoStage,
       distanceKm: route.distanceKm,
+      distanceFromHotelKm: route.distanceFromHotelKm ?? "",
       durationMin: String(route.durationMin),
       elevationGainM: String(route.elevationGainM),
       elevationLossM: String(route.elevationLossM),
@@ -122,6 +125,7 @@ export default function RutasPage() {
         category: form.category,
         isCaminoStage: form.isCaminoStage,
         distanceKm: Number(form.distanceKm),
+        distanceFromHotelKm: form.distanceFromHotelKm ? Number(form.distanceFromHotelKm) : null,
         durationMin: Number(form.durationMin),
         elevationGainM: Number(form.elevationGainM),
         elevationLossM: Number(form.elevationLossM),
@@ -225,7 +229,7 @@ export default function RutasPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div>
               <label className="label mb-2">Distancia (km) *</label>
               <input
@@ -236,6 +240,18 @@ export default function RutasPage() {
                 value={form.distanceKm}
                 onChange={(e) => setForm({ ...form, distanceKm: e.target.value })}
                 required
+              />
+            </div>
+            <div>
+              <label className="label mb-2">Distancia al hotel (km)</label>
+              <input
+                type="number"
+                className="input"
+                min="0"
+                step="0.1"
+                placeholder="Coche desde Villalén"
+                value={form.distanceFromHotelKm}
+                onChange={(e) => setForm({ ...form, distanceFromHotelKm: e.target.value })}
               />
             </div>
             <div>
@@ -446,6 +462,7 @@ export default function RutasPage() {
                   <p className="text-xs text-stone-400 mb-2">
                     {route.category} · {route.distanceKm} km · {route.durationMin} min ·{" "}
                     +{route.elevationGainM}m / -{route.elevationLossM}m
+                    {route.distanceFromHotelKm && ` · ${route.distanceFromHotelKm} km del hotel`}
                   </p>
                   <p className="text-sm text-stone-500 leading-relaxed">{route.description}</p>
                   {route.pointsOfInterest.length > 0 && (

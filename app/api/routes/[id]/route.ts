@@ -49,6 +49,12 @@ export async function PATCH(
       category: body.category,
       isCaminoStage: body.isCaminoStage,
       distanceKm: body.distanceKm !== undefined ? Number(body.distanceKm) : undefined,
+      distanceFromHotelKm:
+        body.distanceFromHotelKm !== undefined
+          ? body.distanceFromHotelKm === "" || body.distanceFromHotelKm === null
+            ? null
+            : Number(body.distanceFromHotelKm)
+          : undefined,
       durationMin: body.durationMin !== undefined ? Number(body.durationMin) : undefined,
       elevationGainM: body.elevationGainM !== undefined ? Number(body.elevationGainM) : undefined,
       elevationLossM: body.elevationLossM !== undefined ? Number(body.elevationLossM) : undefined,

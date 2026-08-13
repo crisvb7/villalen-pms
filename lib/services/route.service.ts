@@ -11,6 +11,7 @@ export interface RouteInput {
   category: string;
   isCaminoStage?: boolean;
   distanceKm: number;
+  distanceFromHotelKm?: number | null;
   durationMin: number;
   elevationGainM?: number;
   elevationLossM?: number;
@@ -72,6 +73,7 @@ export async function createRoute(input: RouteInput) {
       category: input.category.trim(),
       isCaminoStage: input.isCaminoStage ?? false,
       distanceKm: input.distanceKm,
+      distanceFromHotelKm: input.distanceFromHotelKm ?? null,
       durationMin: input.durationMin,
       elevationGainM: input.elevationGainM ?? 0,
       elevationLossM: input.elevationLossM ?? 0,

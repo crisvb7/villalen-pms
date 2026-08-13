@@ -49,6 +49,10 @@ export async function POST(request: NextRequest) {
       category,
       isCaminoStage: body.isCaminoStage,
       distanceKm: Number(distanceKm),
+      distanceFromHotelKm:
+        body.distanceFromHotelKm !== undefined && body.distanceFromHotelKm !== ""
+          ? Number(body.distanceFromHotelKm)
+          : null,
       durationMin: Number(durationMin),
       elevationGainM: body.elevationGainM !== undefined ? Number(body.elevationGainM) : undefined,
       elevationLossM: body.elevationLossM !== undefined ? Number(body.elevationLossM) : undefined,

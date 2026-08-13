@@ -199,6 +199,10 @@ model Route {
   // tarjeta grande y el badge de concha.
   isCaminoStage    Boolean         @default(false)
   distanceKm       Decimal         @db.Decimal(5, 1)
+  // Distancia en coche desde el hotel hasta el inicio de la ruta — para
+  // poder ordenar por cercanía en la app de huéspedes. Nullable porque las
+  // rutas creadas antes de este campo no la tienen todavía.
+  distanceFromHotelKm Decimal?      @db.Decimal(5, 1)
   durationMin      Int
   elevationGainM   Int             @default(0)
   elevationLossM   Int             @default(0)
