@@ -386,3 +386,12 @@ export async function setDinnerServiceEnabled(enabled: boolean) {
     body: JSON.stringify({ dinnerServiceEnabled: enabled }),
   });
 }
+
+// ── Notificaciones push (APNs) ──────────────────────────────────────────
+
+export async function registerPushToken(token: string) {
+  return request<{ message: string }>("/api/staff/push-token", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}

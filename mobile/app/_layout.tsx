@@ -4,10 +4,12 @@
 // después, Stack.Protected decide entre el grupo (app) autenticado y la
 // pantalla de login.
 
+import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as Notifications from "expo-notifications";
 import {
   useFonts,
   PlayfairDisplay_500Medium,
@@ -15,10 +17,27 @@ import {
   PlayfairDisplay_700Bold,
 } from "@expo-google-fonts/playfair-display";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { registerForPushNotifications } from "@/lib/notifications";
 import { colors } from "@/lib/theme";
 
 function RootNavigator() {
   const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (user) registerForPushNotifications();
+  }, [user]);
+
+  useEffect(() => {
+    // El backend manda { data: { bookingId } } en el payload de la
+    // notificación (ver lib/services/push.service.ts en el servidor).
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const bookingId = response.notification.request.content.data?.bookingId;
+      if (typeof bookingId === "string") {
+        router.push(`/reservas/${bookingId}`);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   if (isLoading) {
     return (
