@@ -4,7 +4,7 @@
 // en el backend) — SERVICE_CUTOFFS aquí solo pinta el estado esperado al
 // instante, sin esperar a la respuesta del POST.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Card } from "@/components/Card";
 import { DaySelector } from "@/components/DaySelector";
@@ -50,9 +50,15 @@ export default function ServiciosScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // useFocusEffect (no useEffect) para que al volver a esta pestaña se
+  // refresque dinnerServiceEnabled y las peticiones — p. ej. si el personal
+  // acaba de activar/desactivar la cena desde la web mientras el huésped
+  // tenía la app abierta en otra pestaña.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   if (!booking) return null;
 
