@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { cn, ROUTE_DIFFICULTY_COLORS, ROUTE_DIFFICULTY_LABELS } from "@/lib/utils";
-import { ALLOWED_ROUTE_ICONS } from "@/lib/route-icons";
+import { ALLOWED_ROUTE_ICONS, ROUTE_ICON_LABELS } from "@/lib/route-icons";
 
 interface RouteItem {
   id: string;
@@ -16,6 +16,7 @@ interface RouteItem {
   elevationLossM: number;
   difficulty: string;
   icon: string;
+  imageUrl: string | null;
   description: string;
   pointsOfInterest: string[];
   isPublished: boolean;
@@ -32,6 +33,7 @@ const emptyForm = {
   elevationLossM: "0",
   difficulty: "MODERATE",
   icon: ALLOWED_ROUTE_ICONS[0] as string,
+  imageUrl: "" as string,
   description: "",
   pointsOfInterest: "",
   isPublished: true,
@@ -44,6 +46,7 @@ export default function RutasPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -77,6 +80,7 @@ export default function RutasPage() {
       elevationLossM: String(route.elevationLossM),
       difficulty: route.difficulty,
       icon: route.icon,
+      imageUrl: route.imageUrl ?? "",
       description: route.description,
       pointsOfInterest: route.pointsOfInterest.join(", "),
       isPublished: route.isPublished,
@@ -84,6 +88,28 @@ export default function RutasPage() {
     });
     setError(null);
     setShowForm(true);
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite re-seleccionar el mismo archivo si falla
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/routes/upload", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "No se pudo subir la imagen.");
+        return;
+      }
+      setForm((f) => ({ ...f, imageUrl: data.data.url }));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,6 +127,7 @@ export default function RutasPage() {
         elevationLossM: Number(form.elevationLossM),
         difficulty: form.difficulty,
         icon: form.icon,
+        imageUrl: form.imageUrl || null,
         description: form.description,
         pointsOfInterest: form.pointsOfInterest
           .split(",")
@@ -266,10 +293,13 @@ export default function RutasPage() {
               >
                 {ALLOWED_ROUTE_ICONS.map((icon) => (
                   <option key={icon} value={icon}>
-                    {icon}
+                    {ROUTE_ICON_LABELS[icon]}
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-stone-400 mt-1">
+                Respaldo si no hay foto: fondo de color + este icono.
+              </p>
             </div>
             <div>
               <label className="label mb-2">Orden</label>
@@ -301,6 +331,43 @@ export default function RutasPage() {
           </div>
 
           <div className="mb-4">
+            <label className="label mb-2">Foto</label>
+            <div className="flex items-center gap-4">
+              {form.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={form.imageUrl}
+                  alt="Vista previa"
+                  className="w-24 h-24 rounded-lg object-cover border border-stone-200"
+                />
+              )}
+              <div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleImageChange}
+                  disabled={uploading}
+                  className="text-sm text-stone-600"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  {uploading
+                    ? "Subiendo…"
+                    : "JPG, PNG o WebP, máx. 5MB. Se usa como cabecera de la ruta en la app; si no hay foto, se usa el icono."}
+                </p>
+                {form.imageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                    className="text-xs text-red-600 mt-1"
+                  >
+                    Quitar foto
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4">
             <label className="label mb-2">Descripción *</label>
             <textarea
               className="input resize-none"
@@ -325,7 +392,7 @@ export default function RutasPage() {
           {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
           <div className="flex gap-3">
-            <button type="submit" className="btn-primary" disabled={saving}>
+            <button type="submit" className="btn-primary" disabled={saving || uploading}>
               {saving ? "Guardando…" : editingId ? "Guardar cambios" : "Crear ruta"}
             </button>
             <button

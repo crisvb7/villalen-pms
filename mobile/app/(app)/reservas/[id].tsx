@@ -12,9 +12,10 @@ import {
   View,
 } from "react-native";
 import * as api from "@/lib/api";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatLongDate, formatMoney } from "@/lib/date";
-import { colors, fonts } from "@/lib/theme";
+import { colors } from "@/lib/theme";
 import type {
   Booking,
   BookingStatus,
@@ -214,13 +215,19 @@ export default function BookingDetailScreen() {
   const nextAction = NEXT_STATUS[booking.status];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
-      <View style={styles.headerRow}>
-        <Text style={styles.name}>
-          {booking.guest.firstName} {booking.guest.lastName}
-        </Text>
-        <StatusBadge status={booking.status} />
-      </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + 12, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right },
+      ]}
+    >
+      <ScreenHeader
+        eyebrow="Reserva"
+        title={`${booking.guest.firstName} ${booking.guest.lastName}`}
+        right={<StatusBadge status={booking.status} />}
+        showBack
+      />
 
       <Section title="Fechas">
         <Row label="Entrada" value={formatLongDate(booking.checkInDate)} />
@@ -425,18 +432,6 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
     fontSize: 15,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  name: {
-    fontFamily: fonts.serifBold,
-    fontSize: 22,
-    color: colors.text,
-    flexShrink: 1,
   },
   section: {
     backgroundColor: colors.surface,

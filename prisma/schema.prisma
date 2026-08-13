@@ -204,8 +204,11 @@ model Route {
   elevationLossM   Int             @default(0)
   difficulty       RouteDifficulty @default(MODERATE)
   // Nombre de icono de Ionicons (@expo/vector-icons) — se valida contra una
-  // lista blanca en el servicio, no aquí.
+  // lista blanca en el servicio, no aquí. Se sigue usando como respaldo
+  // (fondo de color + icono) cuando la ruta no tiene imageUrl.
   icon             String          @default("walk-outline")
+  // Foto subida desde el admin (Vercel Blob) — opcional, ver /api/routes/upload.
+  imageUrl         String?
   description      String
   pointsOfInterest String[]        @default([])
   // Permite ocultarla (cierre estacional, obras) sin borrar el contenido.

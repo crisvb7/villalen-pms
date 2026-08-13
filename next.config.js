@@ -7,7 +7,7 @@ const nextConfig = {
     // @react-pdf/renderer también: si webpack lo empaqueta junto al resto del
     // código de servidor, su reconciler interno rompe con
     // "a.Component is not a constructor" (bug conocido de bundling).
-    serverComponentsExternalPackages: ["@prisma/client", "prisma", "@react-pdf/renderer"],
+    serverComponentsExternalPackages: ["@prisma/client", "prisma", "@react-pdf/renderer", "@vercel/blob"],
     serverActions: {
       allowedOrigins: ["localhost:3000"],
     },

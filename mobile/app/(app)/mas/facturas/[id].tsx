@@ -6,6 +6,7 @@ import * as api from "@/lib/api";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { formatLongDate, formatMoney } from "@/lib/date";
 import { colors } from "@/lib/theme";
 import type { Invoice } from "@/lib/types";
@@ -64,14 +65,24 @@ export default function InvoiceDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
-      <View style={styles.headerRow}>
-        <Text style={styles.number}>{invoice.invoiceNumber}</Text>
-        <Badge
-          label={invoice.isPaid ? "Pagada" : "Pendiente"}
-          tone={invoice.isPaid ? "green" : "orange"}
-        />
-      </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + 12, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right },
+      ]}
+    >
+      <ScreenHeader
+        eyebrow="Factura"
+        title={invoice.invoiceNumber}
+        right={
+          <Badge
+            label={invoice.isPaid ? "Pagada" : "Pendiente"}
+            tone={invoice.isPaid ? "green" : "orange"}
+          />
+        }
+        showBack
+      />
 
       <Card>
         <Row label="Huésped" value={`${invoice.booking.guest.firstName} ${invoice.booking.guest.lastName}`} />
@@ -127,17 +138,6 @@ const styles = StyleSheet.create({
   },
   error: {
     color: colors.danger,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  number: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
   },
   sectionTitle: {
     fontSize: 13,

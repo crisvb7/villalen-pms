@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -95,9 +96,20 @@ export default function RutasScreen() {
       {featured && (
         <Link href={`/rutas/${featured.id}`} asChild>
           <Pressable style={styles.featured}>
-            <View style={styles.featuredIconWrap}>
-              <Ionicons name={getRouteIcon(featured.icon)} size={32} color="#FFFFFF" />
-            </View>
+            {featured.imageUrl ? (
+              <>
+                <Image
+                  source={{ uri: featured.imageUrl }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                />
+                <View style={[StyleSheet.absoluteFill, styles.featuredScrim]} />
+              </>
+            ) : (
+              <View style={styles.featuredIconWrap}>
+                <Ionicons name={getRouteIcon(featured.icon)} size={32} color="#FFFFFF" />
+              </View>
+            )}
             <View style={styles.featuredBadge}>
               <Text style={styles.featuredBadgeText}>{featured.category}</Text>
             </View>
@@ -118,9 +130,13 @@ export default function RutasScreen() {
             <Link key={route.id} href={`/rutas/${route.id}`} asChild>
               <Pressable>
                 <Card style={styles.row}>
-                  <View style={styles.rowIcon}>
-                    <Ionicons name={getRouteIcon(route.icon)} size={20} color={colors.primary} />
-                  </View>
+                  {route.imageUrl ? (
+                    <Image source={{ uri: route.imageUrl }} style={styles.rowIcon} contentFit="cover" />
+                  ) : (
+                    <View style={styles.rowIcon}>
+                      <Ionicons name={getRouteIcon(route.icon)} size={20} color={colors.primary} />
+                    </View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rowCategory}>{route.category}</Text>
                     <Text style={styles.rowName}>{route.name}</Text>
@@ -166,6 +182,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     backgroundColor: colors.primary,
     padding: spacing.lg,
+    overflow: "hidden",
+  },
+  featuredScrim: {
+    backgroundColor: "rgba(28,25,23,0.4)",
   },
   featuredIconWrap: {
     width: 56,

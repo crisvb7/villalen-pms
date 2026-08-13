@@ -16,6 +16,7 @@ export interface RouteInput {
   elevationLossM?: number;
   difficulty?: RouteDifficulty;
   icon?: string;
+  imageUrl?: string | null;
   description: string;
   pointsOfInterest?: string[];
   isPublished?: boolean;
@@ -76,6 +77,7 @@ export async function createRoute(input: RouteInput) {
       elevationLossM: input.elevationLossM ?? 0,
       difficulty: input.difficulty ?? RouteDifficulty.MODERATE,
       icon: input.icon ?? "walk-outline",
+      imageUrl: input.imageUrl ?? null,
       description: input.description.trim(),
       pointsOfInterest: cleanPointsOfInterest(input.pointsOfInterest) ?? [],
       isPublished: input.isPublished ?? true,

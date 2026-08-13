@@ -54,6 +54,7 @@ export async function PATCH(
       elevationLossM: body.elevationLossM !== undefined ? Number(body.elevationLossM) : undefined,
       difficulty: body.difficulty,
       icon: body.icon,
+      imageUrl: body.imageUrl,
       description: body.description,
       pointsOfInterest: body.pointsOfInterest,
       isPublished: body.isPublished,

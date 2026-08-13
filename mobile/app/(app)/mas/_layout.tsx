@@ -10,6 +10,7 @@ export default function MasLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="servicios" options={{ headerShown: false }} />
       <Stack.Screen name="huespedes" options={{ headerShown: false }} />
       <Stack.Screen name="facturas" options={{ headerShown: false }} />
       <Stack.Screen name="gastos" options={{ headerShown: false }} />

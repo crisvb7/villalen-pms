@@ -6,6 +6,7 @@ import * as api from "@/lib/api";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { formatLongDate, formatMoney } from "@/lib/date";
 import { colors, quoteStatusLabels, quoteStatusTones } from "@/lib/theme";
 import type { Quote, QuoteStatus } from "@/lib/types";
@@ -74,14 +75,24 @@ export default function QuoteDetailScreen() {
   const actions = ACTIONS[quote.status] ?? [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
-      <View style={styles.headerRow}>
-        <Text style={styles.number}>{quote.quoteNumber}</Text>
-        <Badge
-          label={quoteStatusLabels[quote.status] ?? quote.status}
-          tone={quoteStatusTones[quote.status] ?? "gray"}
-        />
-      </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + 12, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right },
+      ]}
+    >
+      <ScreenHeader
+        eyebrow="Presupuesto"
+        title={quote.quoteNumber}
+        right={
+          <Badge
+            label={quoteStatusLabels[quote.status] ?? quote.status}
+            tone={quoteStatusTones[quote.status] ?? "gray"}
+          />
+        }
+        showBack
+      />
 
       <Card>
         <Row label="Cliente" value={quote.guestName} />
@@ -152,17 +163,6 @@ const styles = StyleSheet.create({
   },
   error: {
     color: colors.danger,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  number: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
   },
   row: {
     flexDirection: "row",

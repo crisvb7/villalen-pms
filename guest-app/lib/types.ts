@@ -50,6 +50,7 @@ export interface GuestRoute {
   elevationLossM: number;
   difficulty: RouteDifficulty;
   icon: string; // nombre de Ionicons, validado en el backend — ver lib/route-display.ts para el fallback defensivo
+  imageUrl: string | null; // si existe, sustituye al icono como cabecera (ver rutas/[id].tsx)
   description: string;
   pointsOfInterest: string[];
   isPublished: boolean;

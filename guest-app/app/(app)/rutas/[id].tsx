@@ -2,14 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BackButton } from "@/components/BackButton";
 import * as api from "@/lib/api";
 import { DIFFICULTY_COLORS, DIFFICULTY_LABELS, getRouteIcon } from "@/lib/route-display";
 import { colors, fonts, radii, spacing } from "@/lib/theme";
 import type { GuestRoute } from "@/lib/types";
 
 export default function RouteDetailScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [route, setRoute] = useState<GuestRoute | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +33,9 @@ export default function RouteDetailScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
+        <View style={[styles.backFloating, { top: insets.top + spacing.sm }]}>
+          <BackButton variant="solid" />
+        </View>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -35,6 +44,9 @@ export default function RouteDetailScreen() {
   if (error || !route) {
     return (
       <View style={styles.center}>
+        <View style={[styles.backFloating, { top: insets.top + spacing.sm }]}>
+          <BackButton variant="solid" />
+        </View>
         <Text style={styles.notFoundText}>{error ?? "Ruta no encontrada."}</Text>
       </View>
     );
@@ -45,82 +57,106 @@ export default function RouteDetailScreen() {
   const minutes = route.durationMin % 60;
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }}>
-      <Stack.Screen options={{ title: route.name }} />
-      <View style={styles.hero}>
-        <Ionicons name={getRouteIcon(route.icon)} size={48} color="#FFFFFF" />
+    <View style={{ flex: 1 }}>
+      <StatusBar style="light" />
+      <View style={[styles.backFloating, { top: insets.top + spacing.sm }]}>
+        <BackButton />
       </View>
-
-      <View style={styles.content}>
-        <View style={styles.badgeRow}>
-          <View style={[styles.pill, { backgroundColor: diff.bg }]}>
-            <Text style={[styles.pillText, { color: diff.fg }]}>
-              {DIFFICULTY_LABELS[route.difficulty]}
-            </Text>
-          </View>
-          <View style={styles.pill}>
-            <Text style={styles.pillTextMuted}>
-              {route.isCaminoStage ? "🐚 " : ""}
-              {route.category}
-            </Text>
-          </View>
+      <ScrollView style={{ backgroundColor: colors.background }}>
+        <View style={styles.hero}>
+          {route.imageUrl ? (
+            <>
+              <Image source={{ uri: route.imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <LinearGradient
+                colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]}
+                style={styles.heroGradient}
+              />
+            </>
+          ) : (
+            <Ionicons name={getRouteIcon(route.icon)} size={48} color="#FFFFFF" />
+          )}
         </View>
 
-        <Text style={styles.title}>{route.name}</Text>
-
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Ionicons name="location-outline" size={18} color={colors.text} />
-            <Text style={styles.statValue}>{route.distanceKm} km</Text>
-            <Text style={styles.statLabel}>Distancia</Text>
-          </View>
-          <View style={styles.stat}>
-            <Ionicons name="time-outline" size={18} color={colors.text} />
-            <Text style={styles.statValue}>
-              {hours}h {minutes ? `${minutes}min` : ""}
-            </Text>
-            <Text style={styles.statLabel}>Duración</Text>
-          </View>
-          <View style={styles.stat}>
-            <Ionicons name="trending-up-outline" size={18} color={colors.text} />
-            <Text style={styles.statValue}>
-              +{route.elevationGainM}m / -{route.elevationLossM}m
-            </Text>
-            <Text style={styles.statLabel}>Desnivel</Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Descripción</Text>
-        <Text style={styles.description}>{route.description}</Text>
-
-        {route.pointsOfInterest.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Puntos de interés</Text>
-            <View style={{ gap: spacing.sm }}>
-              {route.pointsOfInterest.map((point, i) => (
-                <View key={point} style={styles.poiRow}>
-                  <View style={styles.poiIndex}>
-                    <Text style={styles.poiIndexText}>{i + 1}</Text>
-                  </View>
-                  <Text style={styles.poiText}>{point}</Text>
-                </View>
-              ))}
+        <View style={styles.content}>
+          <View style={styles.badgeRow}>
+            <View style={[styles.pill, { backgroundColor: diff.bg }]}>
+              <Text style={[styles.pillText, { color: diff.fg }]}>
+                {DIFFICULTY_LABELS[route.difficulty]}
+              </Text>
             </View>
-          </>
-        )}
-      </View>
-    </ScrollView>
+            <View style={styles.pill}>
+              <Text style={styles.pillTextMuted}>
+                {route.isCaminoStage ? "🐚 " : ""}
+                {route.category}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.title}>{route.name}</Text>
+
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Ionicons name="location-outline" size={18} color={colors.text} />
+              <Text style={styles.statValue}>{route.distanceKm} km</Text>
+              <Text style={styles.statLabel}>Distancia</Text>
+            </View>
+            <View style={styles.stat}>
+              <Ionicons name="time-outline" size={18} color={colors.text} />
+              <Text style={styles.statValue}>
+                {hours}h {minutes ? `${minutes}min` : ""}
+              </Text>
+              <Text style={styles.statLabel}>Duración</Text>
+            </View>
+            <View style={styles.stat}>
+              <Ionicons name="trending-up-outline" size={18} color={colors.text} />
+              <Text style={styles.statValue}>
+                +{route.elevationGainM}m / -{route.elevationLossM}m
+              </Text>
+              <Text style={styles.statLabel}>Desnivel</Text>
+            </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>Descripción</Text>
+          <Text style={styles.description}>{route.description}</Text>
+
+          {route.pointsOfInterest.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Puntos de interés</Text>
+              <View style={{ gap: spacing.sm }}>
+                {route.pointsOfInterest.map((point, i) => (
+                  <View key={point} style={styles.poiRow}>
+                    <View style={styles.poiIndex}>
+                      <Text style={styles.poiIndexText}>{i + 1}</Text>
+                    </View>
+                    <Text style={styles.poiText}>{point}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
   notFoundText: { fontFamily: fonts.sansMedium, color: colors.textMuted },
+  backFloating: { position: "absolute", left: spacing.lg, zIndex: 10 },
   hero: {
     height: 180,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  heroGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
   },
   content: { padding: spacing.lg },
   badgeRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm },
