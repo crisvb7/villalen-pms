@@ -14,23 +14,41 @@ import { DIFFICULTY_COLORS, DIFFICULTY_LABELS, getRouteIcon } from "@/lib/route-
 import { colors, fonts, radii, spacing } from "@/lib/theme";
 import type { GuestRoute } from "@/lib/types";
 
-// Sin origin: Google Maps usa la ubicación actual del huésped como punto de
-// partida. Las paradas intermedias van como waypoints, en orden; la última
-// es el destino.
-function buildGoogleMapsUrl(route: GuestRoute): string | null {
-  if (!route.stops || route.stops.length === 0) return null;
+interface MapsLinks {
+  // En coche, sin origin (Google Maps usa la ubicación actual del huésped),
+  // hasta la primera parada (inicio del sendero).
+  toStart: string | null;
+  // A pie, desde la primera parada hasta la última, pasando por las
+  // intermedias como waypoints. Google Maps no admite mezclar modos de
+  // transporte en un único enlace, así que esto va separado del anterior.
+  trail: string | null;
+}
+
+function buildGoogleMapsLinks(route: GuestRoute): MapsLinks {
+  if (!route.stops || route.stops.length === 0) return { toStart: null, trail: null };
   const points = [...route.stops]
     .sort((a, b) => a.order - b.order)
     .map((s) => `${parseFloat(s.lat)},${parseFloat(s.lng)}`);
-  const destination = points[points.length - 1];
-  const waypoints = points.slice(0, -1);
-  const params = new URLSearchParams({
+
+  const toStart = `https://www.google.com/maps/dir/?${new URLSearchParams({
     api: "1",
-    destination,
+    destination: points[0],
     travelmode: "driving",
+  }).toString()}`;
+
+  if (points.length < 2) return { toStart, trail: null };
+
+  const trailParams = new URLSearchParams({
+    api: "1",
+    origin: points[0],
+    destination: points[points.length - 1],
+    travelmode: "walking",
   });
-  if (waypoints.length > 0) params.set("waypoints", waypoints.join("|"));
-  return `https://www.google.com/maps/dir/?${params.toString()}`;
+  const waypoints = points.slice(1, -1);
+  if (waypoints.length > 0) trailParams.set("waypoints", waypoints.join("|"));
+  const trail = `https://www.google.com/maps/dir/?${trailParams.toString()}`;
+
+  return { toStart, trail };
 }
 
 export default function RouteDetailScreen() {
@@ -74,7 +92,7 @@ export default function RouteDetailScreen() {
   const diff = DIFFICULTY_COLORS[route.difficulty];
   const hours = Math.floor(route.durationMin / 60);
   const minutes = route.durationMin % 60;
-  const mapsUrl = buildGoogleMapsUrl(route);
+  const mapsLinks = buildGoogleMapsLinks(route);
 
   return (
     <View style={{ flex: 1 }}>
@@ -136,14 +154,29 @@ export default function RouteDetailScreen() {
             </View>
           </View>
 
-          {mapsUrl && (
-            <Pressable
-              style={styles.mapsButton}
-              onPress={() => Linking.openURL(mapsUrl)}
-            >
-              <Ionicons name="navigate-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.mapsButtonText}>Cómo llegar (Google Maps)</Text>
-            </Pressable>
+          {(mapsLinks.toStart || mapsLinks.trail) && (
+            <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
+              {mapsLinks.toStart && (
+                <Pressable
+                  style={styles.mapsButton}
+                  onPress={() => Linking.openURL(mapsLinks.toStart!)}
+                >
+                  <Ionicons name="car-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.mapsButtonText}>Cómo llegar al inicio (en coche)</Text>
+                </Pressable>
+              )}
+              {mapsLinks.trail && (
+                <Pressable
+                  style={[styles.mapsButton, styles.mapsButtonSecondary]}
+                  onPress={() => Linking.openURL(mapsLinks.trail!)}
+                >
+                  <Ionicons name="walk-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.mapsButtonText, styles.mapsButtonTextSecondary]}>
+                    Ver la ruta a pie
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           )}
 
           <Text style={styles.sectionTitle}>Descripción</Text>
@@ -226,9 +259,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radii.md,
     paddingVertical: spacing.md,
-    marginTop: spacing.lg,
   },
   mapsButtonText: { fontFamily: fonts.sansSemiBold, fontSize: 14, color: "#FFFFFF" },
+  mapsButtonSecondary: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  mapsButtonTextSecondary: { color: colors.primary },
   poiRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   poiIndex: {
     width: 26,
