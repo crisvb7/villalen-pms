@@ -12,6 +12,7 @@ import { BookingConfirmationEmail } from "@/lib/email/templates/BookingConfirmat
 import { BookingCancelledEmail } from "@/lib/email/templates/BookingCancelledEmail";
 import { formatDateLong, formatCurrency, getRoomDisplayName } from "@/lib/utils";
 import { revokeGuestAccessCode } from "@/lib/services/guest-access.service";
+import { clearGuestChat } from "@/lib/services/guest-message.service";
 
 // ── Anti-Overbooking ──────────────────────────────────────────────────────
 
@@ -367,9 +368,13 @@ export async function updateBooking(
     (data.status === BookingStatus.CHECKED_OUT || data.status === BookingStatus.CANCELLED);
   if (endsStay) {
     // Best-effort: si falla, no debe tumbar la actualización de la reserva
-    // (el personal siempre puede revocar el acceso a mano después).
+    // (el personal siempre puede revocar el acceso / ocultar el chat a mano
+    // después).
     await revokeGuestAccessCode(id).catch((err) =>
       console.error("[updateBooking] No se pudo revocar el acceso de huésped", err)
+    );
+    await clearGuestChat(id).catch((err) =>
+      console.error("[updateBooking] No se pudo ocultar el chat de huésped", err)
     );
   }
 

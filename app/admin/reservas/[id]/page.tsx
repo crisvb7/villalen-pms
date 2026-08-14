@@ -32,6 +32,7 @@ interface Booking {
   guest: { firstName: string; lastName: string; email: string; phone: string | null };
   room: { name: string } | null;
   roomType: string;
+  guestChatClearedAt: string | null;
 }
 
 interface ServiceRequest {
@@ -57,6 +58,7 @@ export default function BookingDetailPage() {
   const [toggling, setToggling] = useState<string | null>(null);
   const [messageBody, setMessageBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
 
   const load = useCallback(async () => {
     const [bRes, sRes, mRes] = await Promise.all([
@@ -122,6 +124,27 @@ export default function BookingDetailPage() {
       setMessageBody("");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleClearGuestChat() {
+    if (
+      !confirm(
+        "El huésped dejará de ver el chat en su app (si vuelve a escribir, lo nuevo sí se verá). El historial completo sigue disponible aquí. ¿Continuar?"
+      )
+    )
+      return;
+    setClearingChat(true);
+    try {
+      const res = await fetch(`/api/bookings/${id}/clear-guest-chat`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "No se pudo ocultar el chat.");
+        return;
+      }
+      setBooking((prev) => (prev ? { ...prev, guestChatClearedAt: data.data.guestChatClearedAt } : prev));
+    } finally {
+      setClearingChat(false);
     }
   }
 
@@ -219,7 +242,22 @@ export default function BookingDetailPage() {
       </section>
 
       <section className="card">
-        <h2 className="font-medium text-stone-700 mb-4">Chat con el huésped</h2>
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <h2 className="font-medium text-stone-700">Chat con el huésped</h2>
+          <button
+            onClick={handleClearGuestChat}
+            disabled={clearingChat}
+            className="chip bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+          >
+            {clearingChat ? "Ocultando…" : "Ocultar chat al huésped"}
+          </button>
+        </div>
+        {booking.guestChatClearedAt && (
+          <p className="text-xs text-stone-400 mb-3">
+            Oculto al huésped desde el {new Date(booking.guestChatClearedAt).toLocaleString("es-ES")}
+            {" "}— este historial completo solo lo ves tú.
+          </p>
+        )}
         <div className="space-y-2 max-h-80 overflow-y-auto mb-4 pr-1">
           {messages.length === 0 && (
             <p className="text-stone-400 text-sm">Todavía no hay mensajes.</p>

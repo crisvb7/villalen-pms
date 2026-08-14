@@ -118,6 +118,14 @@ model Booking {
   // mano NUNCA pasan por aquí (siguen sin persistirse en claro).
   guestAccessCodePlain String?
 
+  // Oculta el chat de recepción al huésped (app de huéspedes) sin borrar
+  // nada — el personal lo sigue viendo entero en el histórico de la reserva
+  // (web y app de staff). Se pone sola al hacer checkout/cancelar (junto a
+  // la revocación del código de acceso) y también se puede forzar a mano
+  // con un botón. Solo oculta mensajes anteriores a esta fecha: si el
+  // huésped vuelve a escribir después, esos nuevos mensajes sí se ven.
+  guestChatClearedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

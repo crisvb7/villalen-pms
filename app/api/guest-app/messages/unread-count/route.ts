@@ -6,8 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { requireGuestAuth } from "@/lib/guest-auth";
-import { countUnread } from "@/lib/services/guest-message.service";
-import { MessageSender } from "@prisma/client";
+import { countUnreadForGuest } from "@/lib/services/guest-message.service";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +16,6 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  const count = await countUnread(booking.id, MessageSender.GUEST);
+  const count = await countUnreadForGuest(booking.id);
   return NextResponse.json({ data: { count } });
 }

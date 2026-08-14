@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireGuestAuth } from "@/lib/guest-auth";
 import {
-  listMessages,
+  listMessagesForGuest,
   markMessagesRead,
   sendGuestMessage,
 } from "@/lib/services/guest-message.service";
@@ -20,7 +20,7 @@ export async function GET() {
   }
 
   await markMessagesRead(booking.id, MessageSender.GUEST);
-  const messages = await listMessages(booking.id);
+  const messages = await listMessagesForGuest(booking.id);
   return NextResponse.json({ data: messages });
 }
 

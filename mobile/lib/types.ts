@@ -61,6 +61,7 @@ export interface Booking {
   guestAccessCodeSetAt: string | null;
   guestDisplayName: string | null;
   guestAccessCodePlain: string | null;
+  guestChatClearedAt: string | null;
 }
 
 export interface CleaningRoom {

@@ -60,6 +60,7 @@ export default function BookingDetailScreen() {
   const [messages, setMessages] = useState<GuestMessageItem[]>([]);
   const [messageBody, setMessageBody] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -194,6 +195,31 @@ export default function BookingDetailScreen() {
     } finally {
       setSendingMessage(false);
     }
+  }
+
+  function confirmClearGuestChat() {
+    Alert.alert(
+      "Ocultar chat al huésped",
+      "El huésped dejará de ver el chat en su app (si vuelve a escribir, lo nuevo sí se verá). El historial completo sigue disponible aquí. ¿Continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Sí, ocultar",
+          onPress: async () => {
+            if (!booking) return;
+            setClearingChat(true);
+            try {
+              const res = await api.clearGuestChat(booking.id);
+              setBooking(res.data);
+            } catch (err) {
+              Alert.alert("Error", err instanceof Error ? err.message : "No se pudo ocultar el chat.");
+            } finally {
+              setClearingChat(false);
+            }
+          },
+        },
+      ]
+    );
   }
 
   if (loading) {
@@ -334,6 +360,23 @@ export default function BookingDetailScreen() {
 
       {booking.status !== "CANCELLED" ? (
         <Section title="Chat con el huésped">
+          <View style={styles.guestAccessActions}>
+            <Pressable
+              style={[styles.button, styles.buttonSecondary, clearingChat && styles.buttonDisabled]}
+              disabled={clearingChat}
+              onPress={confirmClearGuestChat}
+            >
+              <Text style={styles.buttonSecondaryText}>
+                {clearingChat ? "Ocultando…" : "Ocultar chat al huésped"}
+              </Text>
+            </Pressable>
+          </View>
+          {booking.guestChatClearedAt ? (
+            <Text style={styles.notes}>
+              Oculto al huésped desde el {new Date(booking.guestChatClearedAt).toLocaleString("es-ES")}
+              {" "}— este historial completo solo lo ves tú.
+            </Text>
+          ) : null}
           {messages.length === 0 ? (
             <Text style={styles.notes}>Todavía no hay mensajes.</Text>
           ) : (

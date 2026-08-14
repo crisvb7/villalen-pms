@@ -5,10 +5,40 @@
 import { prisma } from "@/lib/prisma";
 import { MessageSender } from "@prisma/client";
 
+// Vista del personal (web y app de staff): historial completo, sin filtrar
+// — el chat de una estancia terminada sigue siendo consultable aquí aunque
+// ya no lo vea el huésped.
 export async function listMessages(bookingId: string) {
   return prisma.guestMessage.findMany({
     where: { bookingId },
     orderBy: { createdAt: "asc" },
+  });
+}
+
+// Vista del huésped: si la reserva tiene guestChatClearedAt, oculta todo lo
+// anterior a esa fecha (lo enviado en la estancia ya terminada) pero sigue
+// mostrando mensajes nuevos si el huésped vuelve a escribir después.
+export async function listMessagesForGuest(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { guestChatClearedAt: true },
+  });
+
+  return prisma.guestMessage.findMany({
+    where: {
+      bookingId,
+      ...(booking?.guestChatClearedAt ? { createdAt: { gt: booking.guestChatClearedAt } } : {}),
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+// Oculta el chat al huésped a partir de ahora (checkout/cancelación
+// automáticos, o botón manual del personal). No borra ningún mensaje.
+export async function clearGuestChat(bookingId: string) {
+  return prisma.booking.update({
+    where: { id: bookingId },
+    data: { guestChatClearedAt: new Date() },
   });
 }
 
@@ -50,6 +80,24 @@ export async function countUnread(bookingId: string, reader: MessageSender) {
 
   return prisma.guestMessage.count({
     where: { bookingId, sender: senderToCount, readAt: null },
+  });
+}
+
+// Como countUnread(bookingId, "GUEST") pero sin contar lo oculto por
+// guestChatClearedAt — para el badge de la app de huéspedes.
+export async function countUnreadForGuest(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { guestChatClearedAt: true },
+  });
+
+  return prisma.guestMessage.count({
+    where: {
+      bookingId,
+      sender: MessageSender.STAFF,
+      readAt: null,
+      ...(booking?.guestChatClearedAt ? { createdAt: { gt: booking.guestChatClearedAt } } : {}),
+    },
   });
 }
 

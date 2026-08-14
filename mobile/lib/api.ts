@@ -360,6 +360,14 @@ export async function sendBookingMessage(bookingId: string, body: string) {
   });
 }
 
+// Oculta el chat al huésped en su app (el historial completo sigue viéndose
+// aquí) — se dispara solo al hacer checkout/cancelar, o a mano con esto.
+export async function clearGuestChat(bookingId: string) {
+  return request<{ data: Booking }>(`/api/bookings/${bookingId}/clear-guest-chat`, {
+    method: "POST",
+  });
+}
+
 export async function fetchTodayServicesBoard(date: string) {
   return request<{ data: TodayBoardRow[] }>(`/api/services/today?date=${date}`);
 }
