@@ -1,7 +1,7 @@
 // app/(app)/rutas/[id].tsx
 
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,6 +13,25 @@ import * as api from "@/lib/api";
 import { DIFFICULTY_COLORS, DIFFICULTY_LABELS, getRouteIcon } from "@/lib/route-display";
 import { colors, fonts, radii, spacing } from "@/lib/theme";
 import type { GuestRoute } from "@/lib/types";
+
+// Sin origin: Google Maps usa la ubicación actual del huésped como punto de
+// partida. Las paradas intermedias van como waypoints, en orden; la última
+// es el destino.
+function buildGoogleMapsUrl(route: GuestRoute): string | null {
+  if (!route.stops || route.stops.length === 0) return null;
+  const points = [...route.stops]
+    .sort((a, b) => a.order - b.order)
+    .map((s) => `${parseFloat(s.lat)},${parseFloat(s.lng)}`);
+  const destination = points[points.length - 1];
+  const waypoints = points.slice(0, -1);
+  const params = new URLSearchParams({
+    api: "1",
+    destination,
+    travelmode: "driving",
+  });
+  if (waypoints.length > 0) params.set("waypoints", waypoints.join("|"));
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
 
 export default function RouteDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -55,6 +74,7 @@ export default function RouteDetailScreen() {
   const diff = DIFFICULTY_COLORS[route.difficulty];
   const hours = Math.floor(route.durationMin / 60);
   const minutes = route.durationMin % 60;
+  const mapsUrl = buildGoogleMapsUrl(route);
 
   return (
     <View style={{ flex: 1 }}>
@@ -115,6 +135,16 @@ export default function RouteDetailScreen() {
               <Text style={styles.statLabel}>Desnivel</Text>
             </View>
           </View>
+
+          {mapsUrl && (
+            <Pressable
+              style={styles.mapsButton}
+              onPress={() => Linking.openURL(mapsUrl)}
+            >
+              <Ionicons name="navigate-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.mapsButtonText}>Cómo llegar (Google Maps)</Text>
+            </Pressable>
+          )}
 
           <Text style={styles.sectionTitle}>Descripción</Text>
           <Text style={styles.description}>{route.description}</Text>
@@ -188,6 +218,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   description: { fontFamily: fonts.sansRegular, fontSize: 15, lineHeight: 22, color: colors.textMuted },
+  mapsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    marginTop: spacing.lg,
+  },
+  mapsButtonText: { fontFamily: fonts.sansSemiBold, fontSize: 14, color: "#FFFFFF" },
   poiRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   poiIndex: {
     width: 26,

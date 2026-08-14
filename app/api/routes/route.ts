@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       pointsOfInterest: body.pointsOfInterest,
       isPublished: body.isPublished,
       order: body.order !== undefined ? Number(body.order) : undefined,
+      stops: body.stops,
     });
 
     return NextResponse.json({ data: route }, { status: 201 });

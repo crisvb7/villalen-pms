@@ -65,6 +65,7 @@ export async function PATCH(
       pointsOfInterest: body.pointsOfInterest,
       isPublished: body.isPublished,
       order: body.order !== undefined ? Number(body.order) : undefined,
+      stops: body.stops,
     });
     return NextResponse.json({ data: route });
   } catch (error) {

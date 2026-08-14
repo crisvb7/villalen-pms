@@ -5,6 +5,14 @@ import { useEffect, useState } from "react";
 import { cn, ROUTE_DIFFICULTY_COLORS, ROUTE_DIFFICULTY_LABELS } from "@/lib/utils";
 import { ALLOWED_ROUTE_ICONS, ROUTE_ICON_LABELS } from "@/lib/route-icons";
 
+interface RouteStopItem {
+  id: string;
+  name: string;
+  lat: string;
+  lng: string;
+  order: number;
+}
+
 interface RouteItem {
   id: string;
   name: string;
@@ -22,6 +30,13 @@ interface RouteItem {
   pointsOfInterest: string[];
   isPublished: boolean;
   order: number;
+  stops: RouteStopItem[];
+}
+
+interface StopForm {
+  name: string;
+  lat: string;
+  lng: string;
 }
 
 const emptyForm = {
@@ -40,6 +55,7 @@ const emptyForm = {
   pointsOfInterest: "",
   isPublished: true,
   order: "0",
+  stops: [] as StopForm[],
 };
 
 export default function RutasPage() {
@@ -88,9 +104,37 @@ export default function RutasPage() {
       pointsOfInterest: route.pointsOfInterest.join(", "),
       isPublished: route.isPublished,
       order: String(route.order),
+      stops: [...route.stops]
+        .sort((a, b) => a.order - b.order)
+        .map((s) => ({ name: s.name, lat: s.lat, lng: s.lng })),
     });
     setError(null);
     setShowForm(true);
+  };
+
+  const addStop = () => {
+    setForm((f) => ({ ...f, stops: [...f.stops, { name: "", lat: "", lng: "" }] }));
+  };
+
+  const updateStop = (index: number, patch: Partial<StopForm>) => {
+    setForm((f) => ({
+      ...f,
+      stops: f.stops.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }));
+  };
+
+  const removeStop = (index: number) => {
+    setForm((f) => ({ ...f, stops: f.stops.filter((_, i) => i !== index) }));
+  };
+
+  const moveStop = (index: number, dir: -1 | 1) => {
+    setForm((f) => {
+      const target = index + dir;
+      if (target < 0 || target >= f.stops.length) return f;
+      const stops = [...f.stops];
+      [stops[index], stops[target]] = [stops[target], stops[index]];
+      return { ...f, stops };
+    });
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,6 +164,18 @@ export default function RutasPage() {
     setSaving(true);
     setError(null);
     try {
+      const cleanedStops = form.stops
+        .filter((s) => s.name.trim())
+        .map((s, i) => ({ name: s.name.trim(), lat: Number(s.lat), lng: Number(s.lng), order: i }));
+      const invalidStop = cleanedStops.find(
+        (s) => Number.isNaN(s.lat) || Number.isNaN(s.lng)
+      );
+      if (invalidStop) {
+        setError(`Coordenadas inválidas para la parada "${invalidStop.name}".`);
+        setSaving(false);
+        return;
+      }
+
       const payload = {
         name: form.name,
         category: form.category,
@@ -139,6 +195,7 @@ export default function RutasPage() {
           .filter(Boolean),
         isPublished: form.isPublished,
         order: Number(form.order),
+        stops: cleanedStops,
       };
 
       const res = await fetch(
@@ -403,6 +460,75 @@ export default function RutasPage() {
               value={form.pointsOfInterest}
               onChange={(e) => setForm({ ...form, pointsOfInterest: e.target.value })}
             />
+          </div>
+
+          <div className="mb-6">
+            <label className="label mb-2">Paradas (coordenadas GPS, en orden)</label>
+            <p className="text-xs text-stone-400 mb-3">
+              Si añades al menos una, la app de huéspedes muestra un botón &quot;Cómo
+              llegar&quot; que abre Google Maps con indicaciones desde la ubicación del
+              huésped, pasando por cada parada en orden, hasta la última.
+            </p>
+            <div className="flex flex-col gap-2">
+              {form.stops.map((stop, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-xs text-stone-400 w-5 text-center">{i + 1}</span>
+                  <input
+                    type="text"
+                    className="input flex-1"
+                    placeholder="Nombre de la parada"
+                    value={stop.name}
+                    onChange={(e) => updateStop(i, { name: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    className="input w-32"
+                    placeholder="Lat"
+                    value={stop.lat}
+                    onChange={(e) => updateStop(i, { lat: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    className="input w-32"
+                    placeholder="Lng"
+                    value={stop.lng}
+                    onChange={(e) => updateStop(i, { lng: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => moveStop(i, -1)}
+                    disabled={i === 0}
+                    className="chip bg-white text-stone-600 border-stone-200 disabled:opacity-30"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveStop(i, 1)}
+                    disabled={i === form.stops.length - 1}
+                    className="chip bg-white text-stone-600 border-stone-200 disabled:opacity-30"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeStop(i)}
+                    className="chip bg-white text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addStop}
+              className="chip bg-white text-stone-600 border-stone-200 hover:bg-stone-50 mt-2"
+            >
+              + Añadir parada
+            </button>
           </div>
 
           {error && <p className="text-sm text-red-600 mb-4">{error}</p>}

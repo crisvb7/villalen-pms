@@ -6,6 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { RouteDifficulty } from "@prisma/client";
 import { ALLOWED_ROUTE_ICONS } from "@/lib/route-icons";
 
+export interface RouteStopInput {
+  name: string;
+  lat: number;
+  lng: number;
+  order?: number;
+}
+
 export interface RouteInput {
   name: string;
   category: string;
@@ -22,6 +29,9 @@ export interface RouteInput {
   pointsOfInterest?: string[];
   isPublished?: boolean;
   order?: number;
+  // Paradas en orden, para el enlace de indicaciones de Google Maps en la
+  // app de huéspedes. undefined = no tocar; [] = borrar todas las paradas.
+  stops?: RouteStopInput[];
 }
 
 function validate(input: Partial<RouteInput>) {
@@ -45,6 +55,23 @@ function validate(input: Partial<RouteInput>) {
       `Icono no soportado. Usa uno de: ${ALLOWED_ROUTE_ICONS.join(", ")}.`
     );
   }
+  if (input.stops) {
+    for (const stop of input.stops) {
+      if (!stop.name.trim()) {
+        throw new Error("El nombre de cada parada no puede estar vacío.");
+      }
+      if (stop.lat < -90 || stop.lat > 90 || stop.lng < -180 || stop.lng > 180) {
+        throw new Error(`Coordenadas fuera de rango para la parada "${stop.name}".`);
+      }
+    }
+  }
+}
+
+function stopsCreateData(stops?: RouteStopInput[]) {
+  if (!stops) return undefined;
+  return stops
+    .map((s, i) => ({ name: s.name.trim(), lat: s.lat, lng: s.lng, order: s.order ?? i }))
+    .filter((s) => s.name);
 }
 
 function cleanPointsOfInterest(points?: string[]): string[] | undefined {
@@ -57,11 +84,15 @@ function cleanPointsOfInterest(points?: string[]): string[] | undefined {
 export async function getAllRoutes() {
   return prisma.route.findMany({
     orderBy: [{ isCaminoStage: "desc" }, { order: "asc" }, { name: "asc" }],
+    include: { stops: { orderBy: { order: "asc" } } },
   });
 }
 
 export async function getRouteByIdAdmin(id: string) {
-  return prisma.route.findUnique({ where: { id } });
+  return prisma.route.findUnique({
+    where: { id },
+    include: { stops: { orderBy: { order: "asc" } } },
+  });
 }
 
 export async function createRoute(input: RouteInput) {
@@ -84,22 +115,29 @@ export async function createRoute(input: RouteInput) {
       pointsOfInterest: cleanPointsOfInterest(input.pointsOfInterest) ?? [],
       isPublished: input.isPublished ?? true,
       order: input.order ?? 0,
+      stops: { create: stopsCreateData(input.stops) },
     },
+    include: { stops: { orderBy: { order: "asc" } } },
   });
 }
 
 export async function updateRoute(id: string, input: Partial<RouteInput>) {
   validate(input);
+  const { stops, ...rest } = input;
 
   return prisma.route.update({
     where: { id },
     data: {
-      ...input,
-      name: input.name?.trim(),
-      category: input.category?.trim(),
-      description: input.description?.trim(),
-      pointsOfInterest: cleanPointsOfInterest(input.pointsOfInterest),
+      ...rest,
+      name: rest.name?.trim(),
+      category: rest.category?.trim(),
+      description: rest.description?.trim(),
+      pointsOfInterest: cleanPointsOfInterest(rest.pointsOfInterest),
+      ...(stops !== undefined
+        ? { stops: { deleteMany: {}, create: stopsCreateData(stops) } }
+        : {}),
     },
+    include: { stops: { orderBy: { order: "asc" } } },
   });
 }
 
@@ -113,11 +151,13 @@ export async function getPublishedRoutes() {
   return prisma.route.findMany({
     where: { isPublished: true },
     orderBy: [{ isCaminoStage: "desc" }, { order: "asc" }, { name: "asc" }],
+    include: { stops: { orderBy: { order: "asc" } } },
   });
 }
 
 export async function getPublishedRouteById(id: string) {
   return prisma.route.findFirst({
     where: { id, isPublished: true },
+    include: { stops: { orderBy: { order: "asc" } } },
   });
 }

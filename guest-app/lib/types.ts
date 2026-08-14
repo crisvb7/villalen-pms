@@ -39,6 +39,14 @@ export interface GuestMessage {
 
 export type RouteDifficulty = "EASY" | "MODERATE" | "HARD";
 
+export interface GuestRouteStop {
+  id: string;
+  name: string;
+  lat: string; // Decimal de Prisma → string en JSON, parsear con parseFloat
+  lng: string;
+  order: number;
+}
+
 export interface GuestRoute {
   id: string;
   name: string;
@@ -56,4 +64,8 @@ export interface GuestRoute {
   pointsOfInterest: string[];
   isPublished: boolean;
   order: number;
+  // En orden — si hay >=1, la ficha de ruta muestra un botón que abre Google
+  // Maps con indicaciones desde la ubicación del huésped, pasando por cada
+  // parada, hasta la última.
+  stops: GuestRouteStop[];
 }
