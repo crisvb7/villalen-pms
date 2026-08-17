@@ -1,6 +1,6 @@
 // lib/email/client.ts
 // Cliente de emails transaccionales (Resend). Mismo patrón best-effort +
-// feature-flag que channex.service.ts / stripe.service.ts: si no está
+// feature-flag que beds24.service.ts / stripe.service.ts: si no está
 // configurado, se omite en silencio; los disparos automáticos nunca deben
 // romper la operación que los originó, solo el reenvío manual puede pedir
 // que el error se propague (throwOnError).

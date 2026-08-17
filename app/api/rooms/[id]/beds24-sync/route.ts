@@ -1,13 +1,13 @@
-// app/api/rooms/[id]/channex-sync/route.ts
+// app/api/rooms/[id]/beds24-sync/route.ts
 // Sincronización manual bajo demanda: republica disponibilidad + tarifa
-// de una habitación en Channex (botón "Sincronizar ahora" del admin).
+// de una habitación en Beds24 (botón "Sincronizar ahora" del admin).
 
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 import { addDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { isChannexConfigured, pushAvailabilityAndRates } from "@/lib/services/channex.service";
+import { isBeds24Configured, pushAvailabilityAndRates } from "@/lib/services/beds24.service";
 import { requireAuth } from "@/lib/auth";
 
 const SYNC_WINDOW_DAYS = 365;
@@ -22,9 +22,9 @@ export async function POST(
   }
 
   try {
-    if (!isChannexConfigured()) {
+    if (!isBeds24Configured()) {
       return NextResponse.json(
-        { error: "Channex no está configurado (faltan CHANNEX_API_KEY / CHANNEX_PROPERTY_ID)." },
+        { error: "Beds24 no está configurado (faltan BEDS24_REFRESH_TOKEN / BEDS24_PROPERTY_ID)." },
         { status: 400 }
       );
     }
@@ -34,9 +34,9 @@ export async function POST(
       return NextResponse.json({ error: "Habitación no encontrada." }, { status: 404 });
     }
 
-    if (!room.channexRoomTypeId || !room.channexRatePlanId) {
+    if (!room.beds24RoomId) {
       return NextResponse.json(
-        { error: "Esta habitación no tiene channexRoomTypeId/channexRatePlanId configurados." },
+        { error: "Esta habitación no tiene beds24RoomId configurado." },
         { status: 400 }
       );
     }
@@ -48,8 +48,8 @@ export async function POST(
 
     return NextResponse.json({ message: `Sincronización enviada para "${room.name}".` });
   } catch (error) {
-    console.error("[POST /api/rooms/:id/channex-sync]", error);
-    const msg = error instanceof Error ? error.message : "Error al sincronizar con Channex.";
+    console.error("[POST /api/rooms/:id/beds24-sync]", error);
+    const msg = error instanceof Error ? error.message : "Error al sincronizar con Beds24.";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 }

@@ -146,8 +146,8 @@ La aplicación estará disponible en **http://localhost:3000**
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| `POST` | `/api/webhooks/channex` | Recibir reservas del Channel Manager |
-| `GET` | `/api/webhooks/channex` | Health check del endpoint |
+| `POST` | `/api/webhooks/beds24` | Recibir reservas del Channel Manager |
+| `GET` | `/api/webhooks/beds24` | Health check del endpoint |
 
 ---
 
@@ -268,44 +268,125 @@ El XML se imprime en consola en desarrollo y se devuelve como fichero descargabl
 
 ---
 
-## 📡 Channel Manager (Channex) — bidireccional
+## 📡 Channel Manager (Beds24) — bidireccional
 
 Booking.com tiene pausada la certificación de nuevos proveedores de conectividad
 directa, así que la conexión con Booking/Airbnb/etc. pasa por un agregador ya
-certificado: [Channex.io](https://channex.io) (~30$/mes + unos pocos $/alojamiento,
-sin permanencia). Cuenta necesaria: crea tu propiedad en su dashboard, y por cada
-`Room` de este PMS crea un *room type* + *rate plan* en Channex.
+certificado: [Beds24](https://beds24.com) (channel manager + PMS, con API v2
+documentada en `api.beds24.com/v2`). Cuenta necesaria: crea tu propiedad en su
+dashboard, y por cada `Room` de este PMS crea la habitación correspondiente en
+Beds24 (te da un `roomId` numérico).
 
-### Entrante (Channex → PMS)
+> ⚠️ Esta integración sustituye a la que antes usaba Channex.io (nunca se llegó
+> a activar en producción). Los nombres de campo de abajo están tomados de la
+> documentación pública de Beds24, pero **no se han verificado todavía contra
+> una cuenta real** — antes de darla por buena, sigue el apartado
+> "Antes de activarla de verdad" más abajo.
 
-Configura en Channex el endpoint: `https://tu-dominio.com/api/webhooks/channex`
+### Entrante (Beds24 → PMS)
 
-| Evento Channex | Acción PMS |
-|----------------|------------|
-| `booking_created` / `booking_new` | Crea reserva con idempotencia |
-| `booking_cancelled` / `booking_cancel` | Cancela reserva |
-| `booking_modified` / `booking_update` | Actualiza fechas |
+En Beds24: **Settings → Properties → Access → Booking webhooks**, activa el
+webhook y configura la URL con un secreto propio en la query string (Beds24 no
+firma sus webhooks con HMAC, así que el secreto va incrustado en la URL):
 
-**Idempotencia**: Usa el campo `externalId` para evitar duplicados en reintentos.
+```
+https://tu-dominio.com/api/webhooks/beds24?secret=TU_BEDS24_WEBHOOK_SECRET
+```
 
-### Saliente (PMS → Channex)
+| Estado de la reserva (Beds24) | Acción PMS |
+|--------------------------------|------------|
+| `confirmed` / `new` / `request` | Crea o actualiza la reserva con idempotencia |
+| `cancelled` / `black` | Cancela la reserva |
+
+**Idempotencia**: usa el campo `externalId` (el `bookId` de Beds24) para evitar
+duplicados en reintentos. **Mapeo de habitación**: por `beds24RoomId`, no por
+nombre — si una reserva llega con un `roomId` sin mapear, se asigna a la primera
+habitación como fallback y se loguea un error para que el personal la reasigne.
+
+### Saliente (PMS → Beds24)
 
 Cada vez que se crea, cancela, mueve o borra una reserva (desde la web propia o el
 backoffice), o cambia el precio de una habitación, el PMS empuja disponibilidad +
-tarifa a Channex (`lib/services/channex.service.ts`) para que las distribuya a los
-canales y evite overbooking cruzado. Es *best-effort*: si Channex falla o no está
-configurado, la operación local no se ve afectada (solo se loguea).
+tarifa a Beds24 (`lib/services/beds24.service.ts`, endpoint
+`POST /inventory/rooms/calendar`) para que las distribuya a los canales y evite
+overbooking cruzado. Es *best-effort*: si Beds24 falla o no está configurado, la
+operación local no se ve afectada (solo se loguea).
 
-1. Rellena `CHANNEX_API_KEY` y `CHANNEX_PROPERTY_ID` en `.env.local`.
+1. Rellena `BEDS24_REFRESH_TOKEN` y `BEDS24_PROPERTY_ID` en `.env.local` (ver
+   más abajo cómo obtener el refresh token).
 2. En `/admin/habitaciones`, pulsa "Canales" en cada habitación y pega su
-   `Room Type ID` y `Rate Plan ID` de Channex. Al guardar se sincroniza automáticamente
-   el próximo año de disponibilidad/tarifa; el botón "Sincronizar ahora" repite el envío.
-3. Hay un cron diario de reconciliación (`/api/cron/channex-sync`, ver `vercel.json`)
+   `Room ID` de Beds24. Al guardar se sincroniza automáticamente el próximo
+   año de disponibilidad/tarifa; el botón "Sincronizar ahora" repite el envío.
+3. Hay un cron diario de reconciliación (`/api/cron/beds24-sync`, ver `vercel.json`)
    como red de seguridad, protegido con `CRON_SECRET`.
 
-> ⚠️ El shape exacto del endpoint ARI de Channex está implementado según su
-> documentación pública (`docs.channex.io`); conviene validarlo contra su entorno
-> sandbox en cuanto tengas cuenta, antes de usarlo en producción.
+### Obtener el `BEDS24_REFRESH_TOKEN`
+
+La API v2 de Beds24 no usa una API key fija como Channex, sino un flujo de
+invite-code → refresh token (de larga duración) → access token (24h, se pide
+solo internamente, no hace falta guardarlo):
+
+1. En el panel de Beds24: **Settings → Account → Access**, genera un *invite
+   code* con los permisos que necesites (como mínimo: leer/escribir
+   disponibilidad y tarifas). Caduca en 24h, así que haz el paso 2 enseguida.
+2. Cámbialo por un refresh token con `GET /authentication/setup` (header
+   `code` con el invite code). El refresh token no caduca mientras se use al
+   menos una vez cada 30 días — y el cron diario de reconciliación ya se
+   encarga de eso automáticamente en cuanto esté configurado.
+3. Guarda ese refresh token como `BEDS24_REFRESH_TOKEN`.
+
+### Antes de activarla de verdad
+
+1. Envía un webhook de prueba desde el panel de Beds24 y compara su payload
+   real con la interfaz `Beds24BookingPayload` de
+   `app/api/webhooks/beds24/route.ts` (queda logueado el JSON crudo). Ajusta
+   los nombres de campo si no coinciden.
+2. Prueba `pushAvailabilityAndRates` contra una habitación de pruebas en
+   Beds24 y comprueba en su calendario que la disponibilidad/tarifa llega
+   como se espera antes de mapear habitaciones reales.
+
+---
+
+## 🔀 Conviviendo con el PMS actual durante la transición
+
+Este código (Beds24 incluido) puede desplegarse **ya**, en paralelo con el PMS
+que tenéis contratado hoy, sin ningún riesgo para la operación en curso:
+mientras `BEDS24_REFRESH_TOKEN` / `BEDS24_PROPERTY_ID` no estén rellenos, todo
+el módulo de Beds24 se queda inerte (no se llama a ninguna API externa, solo
+se loguea que el sync se omite) — es exactamente el mismo diseño "apagado por
+defecto" que ya tenía Channex y por el que nunca llegó a tocar producción.
+
+Eso permite ir construyendo y probando esta integración —incluso contra una
+cuenta Beds24 real y sus sandboxes de prueba— sin que afecte en nada a las
+reservas que hoy gestiona el otro PMS.
+
+**Lo que NO se puede hacer en paralelo** es tener **dos sistemas empujando
+disponibilidad al mismo canal (Booking.com/Airbnb) para las mismas
+habitaciones a la vez**: si el PMS actual y este PMS+Beds24 publican cupo
+para la misma habitación física en el mismo canal, un huésped podría reservar
+la misma noche por los dos sitios (overbooking cruzado) — ningún channel
+manager evita esto si hay dos "dueños" distintos de la misma habitación.
+
+Por eso el corte, cuando llegue (a final de verano, según decidáis), debe ser
+puntual, no gradual, para el lado de distribución a canales:
+
+1. Con Beds24 ya configurado y probado (punto anterior) pero **sin mapear
+   ninguna habitación real todavía** (sin `beds24RoomId`), no hay ningún
+   riesgo — el PMS actual sigue siendo el único que distribuye a los canales.
+2. El día del corte: dejar de publicar disponibilidad desde el PMS actual
+   hacia Booking/Airbnb (pausar sus conexiones de canal, o cerrarlas si el
+   contrato lo permite) **el mismo día** en que se rellenan los `beds24RoomId`
+   de todas las habitaciones y se activa el cron de Beds24.
+3. Antes de ese día: migrar a mano (o por CSV, si Beds24 lo soporta) las
+   reservas futuras que ya tenga el PMS actual, para no perder ninguna
+   estancia confirmada por Booking/Airbnb que caiga después del corte.
+4. El resto del sistema (facturación, precheckin, ficha de viajero, TPV,
+   emails...) ya funciona hoy de forma completamente independiente del
+   channel manager — no bloquea nada de lo anterior.
+
+Todo lo demás de este README (huéspedes, facturas, Stripe, SES, etc.) no
+depende de si Beds24 está o no configurado, así que se puede seguir
+desarrollando y desplegando sin esperar al corte.
 
 ---
 
@@ -330,7 +411,7 @@ hotel-pms/
 │       ├── bookings/               # CRUD reservas + ficha viajero
 │       ├── guests/                 # Huéspedes
 │       ├── invoices/               # Facturas
-│       └── webhooks/channex/       # Channel Manager
+│       └── webhooks/beds24/        # Channel Manager
 ├── lib/
 │   ├── prisma.ts                   # Singleton cliente Prisma
 │   ├── types.ts                    # Tipos TypeScript globales
@@ -338,6 +419,7 @@ hotel-pms/
 │   └── services/
 │       ├── room.service.ts         # Lógica de negocio habitaciones
 │       ├── booking.service.ts      # Lógica de negocio reservas
+│       ├── beds24.service.ts       # Sync saliente con Beds24
 │       └── invoice.service.ts      # Lógica de negocio facturas
 │   └── utils/
 │       └── traveler-record.ts      # Generador XML ficha viajero
@@ -364,29 +446,24 @@ hotel-pms/
 ## 🧪 Pruebas del webhook
 
 ```bash
-# Simular una nueva reserva desde Booking.com
-curl -X POST http://localhost:3000/api/webhooks/channex \
+# Simular una nueva reserva desde Booking.com (payload de ejemplo — verifica
+# el shape real contra el webhook de prueba que manda Beds24 desde su panel,
+# ver "Antes de activarla de verdad" más arriba)
+curl -X POST "http://localhost:3000/api/webhooks/beds24?secret=TU_BEDS24_WEBHOOK_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
-    "event": "booking_created",
-    "booking": {
-      "id": "CHANNEX-TEST-001",
-      "channel": { "title": "Booking.com" },
-      "arrival_date": "2024-08-15",
-      "departure_date": "2024-08-20",
-      "guest": {
-        "first_name": "Ana",
-        "last_name": "Rodríguez",
-        "email": "ana@test.com",
-        "document": "87654321B"
-      },
-      "rooms": [{
-        "id": "room-1",
-        "title": "Suite Carballo",
-        "occupancy": { "adults": 2, "children": 0 },
-        "rate": { "price": 145, "currency": "EUR" }
-      }]
-    }
+    "bookId": "BEDS24-TEST-001",
+    "roomId": "12345",
+    "status": "confirmed",
+    "referer": "Booking.com",
+    "arrival": "2024-08-15",
+    "departure": "2024-08-20",
+    "firstName": "Ana",
+    "lastName": "Rodríguez",
+    "email": "ana@test.com",
+    "numAdult": 2,
+    "numChild": 0,
+    "price": 725
   }'
 ```
 

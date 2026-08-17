@@ -3,7 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { parseISO, isValid, addDays } from "date-fns";
-import { pushAvailabilityAndRates } from "@/lib/services/channex.service";
+import { pushAvailabilityAndRates } from "@/lib/services/beds24.service";
 import { checkRoomTypeAvailability } from "@/lib/services/booking.service";
 import { RoomType } from "@prisma/client";
 
@@ -19,11 +19,10 @@ export interface CreateRoomData {
 
 export interface UpdateRoomData extends Partial<CreateRoomData> {
   isClean?: boolean;
-  channexRoomTypeId?: string;
-  channexRatePlanId?: string;
+  beds24RoomId?: string;
 }
 
-const CHANNEX_SYNC_WINDOW_DAYS = 365;
+const BEDS24_SYNC_WINDOW_DAYS = 365;
 
 // ── CRUD Habitaciones ─────────────────────────────────────────────────────
 
@@ -71,10 +70,10 @@ export async function updateRoom(id: string, data: UpdateRoomData) {
   });
 
   // Si cambia el precio o se acaba de mapear la habitación a un canal,
-  // republicar la ventana completa para que Channex refleje la tarifa actual.
-  if (data.basePrice !== undefined || data.channexRoomTypeId || data.channexRatePlanId) {
+  // republicar la ventana completa para que Beds24 refleje la tarifa actual.
+  if (data.basePrice !== undefined || data.beds24RoomId) {
     const today = new Date();
-    await pushAvailabilityAndRates(id, today, addDays(today, CHANNEX_SYNC_WINDOW_DAYS));
+    await pushAvailabilityAndRates(id, today, addDays(today, BEDS24_SYNC_WINDOW_DAYS));
   }
 
   return room;

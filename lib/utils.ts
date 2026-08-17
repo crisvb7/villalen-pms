@@ -131,7 +131,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   BOOKING: "Booking.com",
   AIRBNB: "Airbnb",
   MANUAL: "Manual",
-  CHANNEX: "Channel Manager",
+  BEDS24: "Channel Manager",
   PHONE: "Teléfono",
 };
 

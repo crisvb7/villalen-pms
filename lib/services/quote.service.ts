@@ -101,7 +101,7 @@ export interface ConvertQuoteInput {
 
 /**
  * Convierte un presupuesto en una reserva real. Reutiliza createBooking()
- * (hereda el anti-overbooking y el sync a Channex ya construidos).
+ * (hereda el anti-overbooking y el sync a Beds24 ya construidos).
  */
 export async function convertQuoteToBooking(id: string, input: ConvertQuoteInput) {
   const quote = await prisma.quote.findUnique({ where: { id } });

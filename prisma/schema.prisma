@@ -34,10 +34,9 @@ model Room {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Mapeo al Channel Manager (Channex) — se rellena tras crear el
-  // room type y el rate plan correspondientes en el dashboard de Channex.
-  channexRoomTypeId String?
-  channexRatePlanId String?
+  // Mapeo al Channel Manager (Beds24) — se rellena con el "Room Id" (numérico)
+  // de esta habitación en el dashboard de Beds24, tras crearla allí.
+  beds24RoomId String?
 
   bookings Booking[]
 
@@ -84,8 +83,8 @@ model Booking {
   children     Int           @default(0)
 
   // Datos del Channel Manager externo (si aplica)
-  externalId String? @unique // ID desde Channex u otro Channel Manager
-  channelRef String? // Referencia del canal
+  externalId String? @unique // ID de la reserva en Beds24 u otro Channel Manager
+  channelRef String? // Referencia del canal (p.ej. "Booking.com", "Airbnb")
 
   // TPV Virtual (Stripe) — solo IDs, nunca datos de tarjeta (ver aviso PCI-DSS arriba)
   stripeCustomerId      String?
@@ -443,6 +442,6 @@ enum BookingSource {
   BOOKING // Booking.com (via Channel Manager)
   AIRBNB // Airbnb (via Channel Manager)
   MANUAL // Entrada manual por staff
-  CHANNEX // Cualquier canal via Channex
+  BEDS24 // Cualquier canal via Beds24 sin mapeo específico (Booking/Airbnb arriba)
   PHONE // Reserva por teléfono
 }

@@ -12,7 +12,7 @@ const SOURCE_LABELS: Record<string, string> = {
   BOOKING: "Booking",
   AIRBNB: "Airbnb",
   MANUAL: "Manual",
-  CHANNEX: "Channex",
+  BEDS24: "Beds24",
   PHONE: "Teléfono",
 };
 

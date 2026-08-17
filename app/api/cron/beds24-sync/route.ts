@@ -1,6 +1,6 @@
-// app/api/cron/channex-sync/route.ts
+// app/api/cron/beds24-sync/route.ts
 // Red de seguridad: republica disponibilidad + tarifa de todas las
-// habitaciones mapeadas a Channex, por si alguna sincronización puntual
+// habitaciones mapeadas a Beds24, por si alguna sincronización puntual
 // falló silenciosamente. Pensado para ejecutarse una vez al día (ver
 // "crons" en vercel.json).
 
@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { addDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { isChannexConfigured, pushAvailabilityAndRates } from "@/lib/services/channex.service";
+import { isBeds24Configured, pushAvailabilityAndRates } from "@/lib/services/beds24.service";
 
 const SYNC_WINDOW_DAYS = 365;
 
@@ -23,15 +23,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  if (!isChannexConfigured()) {
-    return NextResponse.json({ message: "Channex no configurado. Nada que sincronizar." });
+  if (!isBeds24Configured()) {
+    return NextResponse.json({ message: "Beds24 no configurado. Nada que sincronizar." });
   }
 
   const rooms = await prisma.room.findMany({
-    where: {
-      channexRoomTypeId: { not: null },
-      channexRatePlanId: { not: null },
-    },
+    where: { beds24RoomId: { not: null } },
   });
 
   const today = new Date();

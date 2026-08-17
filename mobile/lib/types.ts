@@ -17,7 +17,7 @@ export type BookingSource =
   | "BOOKING"
   | "AIRBNB"
   | "MANUAL"
-  | "CHANNEX"
+  | "BEDS24"
   | "PHONE";
 
 export interface Room {

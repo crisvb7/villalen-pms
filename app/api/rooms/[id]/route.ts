@@ -56,8 +56,7 @@ export async function PATCH(
       isClean: body.isClean,
       amenities: body.amenities,
       imageUrl: body.imageUrl,
-      channexRoomTypeId: body.channexRoomTypeId,
-      channexRatePlanId: body.channexRatePlanId,
+      beds24RoomId: body.beds24RoomId,
     });
     return NextResponse.json({ data: room });
   } catch (error) {

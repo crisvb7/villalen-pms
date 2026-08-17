@@ -13,8 +13,7 @@ interface Room {
   type: string;
   isClean: boolean;
   amenities: string[];
-  channexRoomTypeId: string | null;
-  channexRatePlanId: string | null;
+  beds24RoomId: string | null;
 }
 
 export default function HabitacionesPage() {
@@ -31,7 +30,7 @@ export default function HabitacionesPage() {
     type: "DOUBLE",
   });
   const [channelRoomId, setChannelRoomId] = useState<string | null>(null);
-  const [channelForm, setChannelForm] = useState({ channexRoomTypeId: "", channexRatePlanId: "" });
+  const [channelForm, setChannelForm] = useState({ beds24RoomId: "" });
   const [channelSaving, setChannelSaving] = useState(false);
   const [channelMessage, setChannelMessage] = useState<string | null>(null);
 
@@ -81,8 +80,7 @@ export default function HabitacionesPage() {
     setChannelRoomId(room.id);
     setChannelMessage(null);
     setChannelForm({
-      channexRoomTypeId: room.channexRoomTypeId ?? "",
-      channexRatePlanId: room.channexRatePlanId ?? "",
+      beds24RoomId: room.beds24RoomId ?? "",
     });
   };
 
@@ -107,7 +105,7 @@ export default function HabitacionesPage() {
     setChannelSaving(true);
     setChannelMessage(null);
     try {
-      const res = await fetch(`/api/rooms/${id}/channex-sync`, { method: "POST" });
+      const res = await fetch(`/api/rooms/${id}/beds24-sync`, { method: "POST" });
       const data = await res.json();
       setChannelMessage(res.ok ? data.message : data.error ?? "Error al sincronizar.");
     } finally {
@@ -289,12 +287,12 @@ export default function HabitacionesPage() {
                       onClick={() => openChannelPanel(room)}
                       className={cn(
                         "chip",
-                        room.channexRoomTypeId
+                        room.beds24RoomId
                           ? "bg-sky-50 text-sky-700 border-sky-200"
                           : "bg-stone-50 text-stone-500 border-stone-200"
                       )}
                     >
-                      {room.channexRoomTypeId ? "✓ Canales" : "Canales"}
+                      {room.beds24RoomId ? "✓ Canales" : "Canales"}
                     </button>
                     <button
                       onClick={() => handleDelete(room.id, room.name)}
@@ -308,29 +306,18 @@ export default function HabitacionesPage() {
                 {channelRoomId === room.id && (
                   <div className="mt-3 rounded-xl border border-stone-200 p-4 bg-stone-50">
                     <p className="text-xs text-stone-500 mb-3">
-                      Mapeo con el Channel Manager (Channex). Crea antes el room type y el
-                      rate plan de esta habitación en el dashboard de Channex y pega aquí sus IDs.
+                      Mapeo con el Channel Manager (Beds24). Crea antes esta habitación en el
+                      dashboard de Beds24 y pega aquí su Room ID.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                       <div>
-                        <label className="label mb-1">Channex Room Type ID</label>
+                        <label className="label mb-1">Beds24 Room ID</label>
                         <input
                           type="text"
                           className="input"
-                          value={channelForm.channexRoomTypeId}
+                          value={channelForm.beds24RoomId}
                           onChange={(e) =>
-                            setChannelForm({ ...channelForm, channexRoomTypeId: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="label mb-1">Channex Rate Plan ID</label>
-                        <input
-                          type="text"
-                          className="input"
-                          value={channelForm.channexRatePlanId}
-                          onChange={(e) =>
-                            setChannelForm({ ...channelForm, channexRatePlanId: e.target.value })
+                            setChannelForm({ ...channelForm, beds24RoomId: e.target.value })
                           }
                         />
                       </div>
@@ -345,7 +332,7 @@ export default function HabitacionesPage() {
                       </button>
                       <button
                         className="btn-secondary text-sm"
-                        disabled={channelSaving || !room.channexRoomTypeId}
+                        disabled={channelSaving || !room.beds24RoomId}
                         onClick={() => handleSyncNow(room.id)}
                       >
                         Sincronizar ahora

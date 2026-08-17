@@ -108,41 +108,10 @@ export interface ApiResponse<T = unknown> {
   message?: string;
 }
 
-// ── Payload del Channel Manager (Channex) ─────────────────────────────────
-// Estructura simplificada del webhook de Channex.io
-export interface ChannexWebhookPayload {
-  event: string; // e.g., "booking_created", "booking_updated", "booking_cancelled"
-  booking: {
-    id: string;
-    property_id: string;
-    status: string;
-    channel: {
-      title: string; // "Booking.com", "Airbnb", etc.
-    };
-    arrival_date: string; // "YYYY-MM-DD"
-    departure_date: string; // "YYYY-MM-DD"
-    rooms: Array<{
-      id: string;
-      title: string;
-      occupancy: {
-        adults: number;
-        children: number;
-      };
-      rate: {
-        price: number;
-        currency: string;
-      };
-    }>;
-    guest: {
-      first_name: string;
-      last_name: string;
-      email: string;
-      phone?: string;
-      document?: string;
-    };
-    notes?: string;
-  };
-}
+// ── Payload del Channel Manager (Beds24) ──────────────────────────────────
+// Ver la definición completa (y las reservas sobre su fiabilidad) en
+// app/api/webhooks/beds24/route.ts — se define ahí, no aquí, porque nada
+// más del frontend/backend la necesita.
 
 // ── Estructura de la Ficha de Viajero ─────────────────────────────────────
 export interface TravelerRecord {

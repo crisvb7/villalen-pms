@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { parseISO, differenceInDays } from "date-fns";
 import { BookingStatus, BookingSource, RoomType } from "@prisma/client";
 import { CreateBookingInput } from "@/lib/types";
-import { pushAvailabilityAndRates } from "@/lib/services/channex.service";
+import { pushAvailabilityAndRates } from "@/lib/services/beds24.service";
 import { sendEmail } from "@/lib/email/client";
 import { BookingConfirmationEmail } from "@/lib/email/templates/BookingConfirmationEmail";
 import { BookingCancelledEmail } from "@/lib/email/templates/BookingCancelledEmail";
