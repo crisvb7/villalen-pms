@@ -159,20 +159,26 @@ export async function pushAvailabilityAndRates(
     const segments = toSegments(days, rangeStart);
     const rate = parseFloat(room.basePrice.toString()).toFixed(2);
 
-    // POST /inventory/rooms/calendar acepta un array de tramos, cada uno con
-    // su propio roomId + rango de fechas + campos a fijar. numAvail 0/1 hace
-    // de "cerrar/abrir" (una sola unidad física por Room de este PMS);
-    // price1 es la tarifa base (Beds24 admite price1..price8 para tarifas
-    // distintas por canal/plan si hiciera falta más adelante).
+    // POST /inventory/rooms/calendar agrupa por habitación: un objeto por
+    // roomId con un array "calendar" de tramos (from/to + campos a fijar).
+    // numAvail 0/1 hace de "cerrar/abrir" (una sola unidad física por Room de
+    // este PMS); price1 es la tarifa base (Beds24 admite price1..price8 para
+    // tarifas distintas por canal/plan si hiciera falta más adelante).
+    // roomId y price1 se envían como número (la API espera enteros/números,
+    // no strings).
     await beds24Post(
       "/inventory/rooms/calendar",
-      segments.map((s) => ({
-        roomId: room.beds24RoomId,
-        from: format(s.from, "yyyy-MM-dd"),
-        to: format(addDays(s.to, -1), "yyyy-MM-dd"), // "to" es inclusivo
-        numAvail: s.available ? 1 : 0,
-        price1: rate,
-      })),
+      [
+        {
+          roomId: Number(room.beds24RoomId),
+          calendar: segments.map((s) => ({
+            from: format(s.from, "yyyy-MM-dd"),
+            to: format(addDays(s.to, -1), "yyyy-MM-dd"), // "to" es inclusivo
+            numAvail: s.available ? 1 : 0,
+            price1: Number(rate),
+          })),
+        },
+      ],
       config.refreshToken
     );
 
