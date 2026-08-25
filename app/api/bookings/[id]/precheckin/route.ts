@@ -42,10 +42,18 @@ export async function PATCH(
     const booking = await submitPrecheckin(params.id, {
       firstName: body.firstName,
       lastName: body.lastName,
+      secondLastName: body.secondLastName,
       documentId: body.documentId,
+      documentSupportNumber: body.documentSupportNumber,
       phone: body.phone,
       nationality: body.nationality,
       birthDate: body.birthDate,
+      sex: body.sex,
+      addressStreet: body.addressStreet,
+      addressCity: body.addressCity,
+      addressPostalCode: body.addressPostalCode,
+      addressProvince: body.addressProvince,
+      addressCountry: body.addressCountry,
     });
 
     return NextResponse.json({ data: booking });

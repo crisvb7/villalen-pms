@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { scanMrzFromImage } from "@/lib/utils/mrz-scan";
-import { ROOM_TYPE_LABELS } from "@/lib/utils";
+import { ROOM_TYPE_LABELS, detectDocumentType } from "@/lib/utils";
 
 interface BookingInfo {
   id: string;
@@ -20,11 +20,19 @@ interface BookingInfo {
   guest: {
     firstName: string;
     lastName: string;
+    secondLastName: string | null;
     documentId: string;
+    documentSupportNumber: string | null;
     email: string;
     phone: string | null;
     nationality: string | null;
     birthDate: string | null;
+    sex: "H" | "M" | null;
+    addressStreet: string | null;
+    addressCity: string | null;
+    addressPostalCode: string | null;
+    addressProvince: string | null;
+    addressCountry: string | null;
   };
 }
 
@@ -38,10 +46,18 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
+    secondLastName: "",
     documentId: "",
+    documentSupportNumber: "",
     nationality: "",
     birthDate: "",
+    sex: "" as "" | "H" | "M",
     phone: "",
+    addressStreet: "",
+    addressCity: "",
+    addressPostalCode: "",
+    addressProvince: "",
+    addressCountry: "",
   });
 
   const [scanning, setScanning] = useState(false);
@@ -63,10 +79,18 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
         setForm({
           firstName: b.guest.firstName,
           lastName: b.guest.lastName,
+          secondLastName: b.guest.secondLastName ?? "",
           documentId: b.guest.documentId,
+          documentSupportNumber: b.guest.documentSupportNumber ?? "",
           nationality: b.guest.nationality ?? "",
           birthDate: b.guest.birthDate ? format(parseISO(b.guest.birthDate), "yyyy-MM-dd") : "",
+          sex: b.guest.sex ?? "",
           phone: b.guest.phone ?? "",
+          addressStreet: b.guest.addressStreet ?? "",
+          addressCity: b.guest.addressCity ?? "",
+          addressPostalCode: b.guest.addressPostalCode ?? "",
+          addressProvince: b.guest.addressProvince ?? "",
+          addressCountry: b.guest.addressCountry ?? "ES",
         });
       })
       .catch(() => setNotFound(true))
@@ -91,6 +115,8 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
         documentId: result.documentId || prev.documentId,
         nationality: result.nationality || prev.nationality,
         birthDate: result.birthDate || prev.birthDate,
+        sex: result.sex || prev.sex,
+        documentSupportNumber: result.documentSupportNumber || prev.documentSupportNumber,
       }));
       setScanMessage("Documento leído. Revisa que los datos sean correctos antes de continuar.");
     } finally {
@@ -99,9 +125,20 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const documentType = form.documentId ? detectDocumentType(form.documentId) : null;
+  const needsSupportNumber = documentType === "DNI" || documentType === "NIE";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (needsSupportNumber && !form.documentSupportNumber.trim()) {
+      setError("El número de soporte (dorso del DNI/NIE) es obligatorio.");
+      return;
+    }
+    if (!form.sex || !form.addressStreet.trim() || !form.addressCity.trim() || !form.addressPostalCode.trim() || !form.addressCountry.trim()) {
+      setError("Sexo y dirección completa son obligatorios para el parte de viajeros.");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/bookings/${params.id}/precheckin`, {
@@ -197,7 +234,7 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
                   />
                 </div>
                 <div>
-                  <label className="label mb-2">Apellidos *</label>
+                  <label className="label mb-2">Primer apellido *</label>
                   <input
                     type="text"
                     className="input"
@@ -205,6 +242,31 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
                     onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                     required
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="label mb-2">Segundo apellido</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.secondLastName}
+                    onChange={(e) => setForm({ ...form, secondLastName: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="label mb-2">Sexo *</label>
+                  <select
+                    className="input"
+                    value={form.sex}
+                    onChange={(e) => setForm({ ...form, sex: e.target.value as "" | "H" | "M" })}
+                    required
+                  >
+                    <option value="">Selecciona…</option>
+                    <option value="H">Hombre</option>
+                    <option value="M">Mujer</option>
+                  </select>
                 </div>
               </div>
 
@@ -231,6 +293,23 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
 
+              {needsSupportNumber && (
+                <div className="mb-4">
+                  <label className="label mb-2">Número de soporte (dorso del documento) *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.documentSupportNumber}
+                    onChange={(e) => setForm({ ...form, documentSupportNumber: e.target.value.toUpperCase() })}
+                    placeholder="Ej. AAA000000"
+                    required
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    El número que aparece en el reverso del DNI/NIE, distinto del número de documento.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="label mb-2">Fecha de nacimiento</label>
@@ -252,9 +331,69 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
 
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="label mb-2">Email</label>
                 <input type="email" className="input bg-stone-50" value={booking.guest.email} disabled />
+              </div>
+
+              <h3 className="font-serif text-lg text-stone-800 mb-1 mt-2">Dirección de residencia</h3>
+              <p className="text-xs text-stone-400 mb-4">Exigida por el parte de viajeros a la policía.</p>
+
+              <div className="mb-4">
+                <label className="label mb-2">Dirección (calle y número) *</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={form.addressStreet}
+                  onChange={(e) => setForm({ ...form, addressStreet: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="label mb-2">Municipio *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.addressCity}
+                    onChange={(e) => setForm({ ...form, addressCity: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label mb-2">Código postal *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.addressPostalCode}
+                    onChange={(e) => setForm({ ...form, addressPostalCode: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="label mb-2">Provincia</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.addressProvince}
+                    onChange={(e) => setForm({ ...form, addressProvince: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="label mb-2">País de residencia *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.addressCountry}
+                    onChange={(e) => setForm({ ...form, addressCountry: e.target.value.toUpperCase() })}
+                    placeholder="ES"
+                    required
+                  />
+                </div>
               </div>
 
               {error && (

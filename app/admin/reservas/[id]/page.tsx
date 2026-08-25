@@ -15,6 +15,7 @@ import {
   STATUS_LABELS,
   STATUS_COLORS,
   getRoomDisplayName,
+  detectDocumentType,
 } from "@/lib/utils";
 
 const SERVICE_META: { type: "BREAKFAST" | "DINNER" | "CLEANING"; label: string; icon: string }[] = [
@@ -23,17 +24,57 @@ const SERVICE_META: { type: "BREAKFAST" | "DINNER" | "CLEANING"; label: string; 
   { type: "CLEANING", label: "Limpieza", icon: "🧹" },
 ];
 
+interface Guest {
+  firstName: string;
+  lastName: string;
+  secondLastName: string | null;
+  email: string;
+  phone: string | null;
+  documentId: string;
+  documentSupportNumber: string | null;
+  nationality: string | null;
+  birthDate: string | null;
+  sex: "H" | "M" | null;
+  addressStreet: string | null;
+  addressCity: string | null;
+  addressPostalCode: string | null;
+  addressProvince: string | null;
+  addressCountry: string | null;
+}
+
 interface Booking {
   id: string;
   status: string;
   checkInDate: string;
   checkOutDate: string;
   totalAmount: string;
-  guest: { firstName: string; lastName: string; email: string; phone: string | null };
+  guest: Guest;
   room: { name: string } | null;
   roomType: string;
   guestChatClearedAt: string | null;
+  precheckinCompletedAt: string | null;
+  sesSubmittedAt: string | null;
+  sesSubmissionError: string | null;
 }
+
+const SEX_LABELS: Record<string, string> = { H: "Hombre", M: "Mujer" };
+
+const EMPTY_GUEST_FORM = {
+  firstName: "",
+  lastName: "",
+  secondLastName: "",
+  documentId: "",
+  documentSupportNumber: "",
+  nationality: "",
+  birthDate: "",
+  sex: "" as "" | "H" | "M",
+  phone: "",
+  addressStreet: "",
+  addressCity: "",
+  addressPostalCode: "",
+  addressProvince: "",
+  addressCountry: "",
+};
 
 interface ServiceRequest {
   id: string;
@@ -59,6 +100,11 @@ export default function BookingDetailPage() {
   const [messageBody, setMessageBody] = useState("");
   const [sending, setSending] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
+  const [editingGuest, setEditingGuest] = useState(false);
+  const [guestForm, setGuestForm] = useState(EMPTY_GUEST_FORM);
+  const [savingGuest, setSavingGuest] = useState(false);
+  const [guestError, setGuestError] = useState("");
+  const [sendingSes, setSendingSes] = useState(false);
 
   const load = useCallback(async () => {
     const [bRes, sRes, mRes] = await Promise.all([
@@ -148,6 +194,72 @@ export default function BookingDetailPage() {
     }
   }
 
+  function openGuestEdit() {
+    if (!booking) return;
+    const g = booking.guest;
+    setGuestForm({
+      firstName: g.firstName,
+      lastName: g.lastName,
+      secondLastName: g.secondLastName ?? "",
+      documentId: g.documentId,
+      documentSupportNumber: g.documentSupportNumber ?? "",
+      nationality: g.nationality ?? "",
+      birthDate: g.birthDate ? g.birthDate.slice(0, 10) : "",
+      sex: g.sex ?? "",
+      phone: g.phone ?? "",
+      addressStreet: g.addressStreet ?? "",
+      addressCity: g.addressCity ?? "",
+      addressPostalCode: g.addressPostalCode ?? "",
+      addressProvince: g.addressProvince ?? "",
+      addressCountry: g.addressCountry ?? "ES",
+    });
+    setGuestError("");
+    setEditingGuest(true);
+  }
+
+  async function saveGuest() {
+    if (!guestForm.firstName.trim() || !guestForm.lastName.trim() || !guestForm.documentId.trim()) {
+      setGuestError("Nombre, primer apellido y documento son obligatorios.");
+      return;
+    }
+    setSavingGuest(true);
+    setGuestError("");
+    try {
+      const res = await fetch(`/api/bookings/${id}/precheckin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(guestForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGuestError(data.error ?? "No se pudieron guardar los datos.");
+        return;
+      }
+      await load();
+      setEditingGuest(false);
+    } finally {
+      setSavingGuest(false);
+    }
+  }
+
+  async function handleSendSes() {
+    setSendingSes(true);
+    try {
+      const res = await fetch(`/api/bookings/${id}/ses-submit`, { method: "POST" });
+      const data = await res.json();
+      alert(res.ok ? data.message : data.error);
+      await load();
+    } finally {
+      setSendingSes(false);
+    }
+  }
+
+  async function handleCopyPrecheckinLink() {
+    const link = `${window.location.origin}/precheckin/${id}`;
+    await navigator.clipboard.writeText(link);
+    alert("Enlace de precheckin copiado al portapapeles.");
+  }
+
   if (loading || !booking) {
     return <p className="text-stone-400">Cargando…</p>;
   }
@@ -191,6 +303,291 @@ export default function BookingDetailPage() {
           {booking.guest.phone ? ` · ${booking.guest.phone}` : ""}
         </p>
       </div>
+
+      <section className="card">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <h2 className="font-medium text-stone-700">Datos del huésped y verificación policial</h2>
+          {!editingGuest && (
+            <button
+              onClick={openGuestEdit}
+              className="chip bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200"
+            >
+              ✏️ Editar datos
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          <span
+            className={cn(
+              "badge",
+              booking.precheckinCompletedAt
+                ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                : "bg-amber-100 text-amber-800 border-amber-200"
+            )}
+          >
+            {booking.precheckinCompletedAt
+              ? `✓ Precheckin/check-in completado · ${new Date(booking.precheckinCompletedAt).toLocaleDateString("es-ES")}`
+              : "⏳ Precheckin/check-in pendiente"}
+          </span>
+          <span
+            className={cn(
+              "badge",
+              booking.sesSubmittedAt
+                ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                : booking.sesSubmissionError
+                  ? "bg-red-100 text-red-700 border-red-200"
+                  : "bg-stone-100 text-stone-500 border-stone-200"
+            )}
+            title={booking.sesSubmissionError ?? undefined}
+          >
+            {booking.sesSubmittedAt
+              ? `✓ Enviado a Policía · ${new Date(booking.sesSubmittedAt).toLocaleDateString("es-ES")}`
+              : booking.sesSubmissionError
+                ? "⚠ Error al enviar a Policía"
+                : "Sin enviar a Policía"}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-5">
+          {!["CANCELLED", "CHECKED_OUT"].includes(booking.status) && (
+            <button
+              onClick={handleCopyPrecheckinLink}
+              className="chip bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+            >
+              🔗 Copiar enlace precheckin
+            </button>
+          )}
+          {booking.status !== "CANCELLED" && (
+            <button
+              onClick={handleSendSes}
+              disabled={sendingSes}
+              className="chip bg-stone-700 text-white border-transparent hover:bg-stone-800"
+            >
+              {sendingSes ? "Enviando…" : booking.sesSubmittedAt ? "📤 Reenviar a Policía" : "📤 Enviar a Policía"}
+            </button>
+          )}
+        </div>
+
+        {editingGuest ? (
+          <div className="border-t border-stone-100 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.firstName}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, firstName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Primer apellido *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.lastName}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, lastName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Segundo apellido</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.secondLastName}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, secondLastName: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">DNI / NIE / Pasaporte *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.documentId}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, documentId: e.target.value.toUpperCase() }))}
+                />
+              </div>
+              {(detectDocumentType(guestForm.documentId || "X") === "DNI" ||
+                detectDocumentType(guestForm.documentId || "X") === "NIE") && (
+                <div>
+                  <label className="label mb-1">Nº de soporte *</label>
+                  <input
+                    type="text"
+                    className="input w-full text-sm"
+                    value={guestForm.documentSupportNumber}
+                    onChange={(e) =>
+                      setGuestForm((f) => ({ ...f, documentSupportNumber: e.target.value.toUpperCase() }))
+                    }
+                    placeholder="Reverso del documento"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="label mb-1">Sexo *</label>
+                <select
+                  className="input w-full text-sm"
+                  value={guestForm.sex}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, sex: e.target.value as "" | "H" | "M" }))}
+                >
+                  <option value="">Selecciona…</option>
+                  <option value="H">Hombre</option>
+                  <option value="M">Mujer</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">Nacionalidad</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.nationality}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, nationality: e.target.value.toUpperCase() }))}
+                  placeholder="ESP"
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Fecha de nacimiento</label>
+                <input
+                  type="date"
+                  className="input w-full text-sm"
+                  value={guestForm.birthDate}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, birthDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Teléfono</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.phone}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs uppercase tracking-widest text-stone-400 mt-4 mb-2">Dirección de residencia</p>
+            <div className="mb-3">
+              <label className="label mb-1">Dirección (calle y número) *</label>
+              <input
+                type="text"
+                className="input w-full text-sm"
+                value={guestForm.addressStreet}
+                onChange={(e) => setGuestForm((f) => ({ ...f, addressStreet: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+              <div>
+                <label className="label mb-1">Municipio *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.addressCity}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, addressCity: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">C.P. *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.addressPostalCode}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, addressPostalCode: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Provincia</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.addressProvince}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, addressProvince: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">País *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.addressCountry}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, addressCountry: e.target.value.toUpperCase() }))}
+                  placeholder="ES"
+                />
+              </div>
+            </div>
+
+            {guestError && <p className="text-xs text-red-600 mb-3">{guestError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setEditingGuest(false)}
+                className="btn-ghost text-sm"
+                disabled={savingGuest}
+              >
+                Cancelar
+              </button>
+              <button onClick={saveGuest} className="btn-primary text-sm" disabled={savingGuest}>
+                {savingGuest ? "Guardando…" : "Guardar datos"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <dl className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 text-sm border-t border-stone-100 pt-4">
+            <div>
+              <dt className="text-stone-400 text-xs">Nombre completo</dt>
+              <dd className="text-stone-700">
+                {booking.guest.firstName} {booking.guest.lastName} {booking.guest.secondLastName ?? ""}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-stone-400 text-xs">Documento</dt>
+              <dd className="text-stone-700">
+                {detectDocumentType(booking.guest.documentId)} {booking.guest.documentId}
+                {booking.guest.documentSupportNumber ? ` (soporte ${booking.guest.documentSupportNumber})` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-stone-400 text-xs">Sexo</dt>
+              <dd className="text-stone-700">
+                {booking.guest.sex ? SEX_LABELS[booking.guest.sex] : <span className="text-amber-600">Sin indicar</span>}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-stone-400 text-xs">Nacionalidad</dt>
+              <dd className="text-stone-700">{booking.guest.nationality ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-stone-400 text-xs">Fecha de nacimiento</dt>
+              <dd className="text-stone-700">
+                {booking.guest.birthDate ? formatDate(booking.guest.birthDate) : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-stone-400 text-xs">Teléfono</dt>
+              <dd className="text-stone-700">{booking.guest.phone ?? "—"}</dd>
+            </div>
+            <div className="md:col-span-3">
+              <dt className="text-stone-400 text-xs">Dirección de residencia</dt>
+              <dd className="text-stone-700">
+                {[
+                  booking.guest.addressStreet,
+                  booking.guest.addressPostalCode,
+                  booking.guest.addressCity,
+                  booking.guest.addressProvince,
+                  booking.guest.addressCountry,
+                ]
+                  .filter(Boolean)
+                  .join(", ") || <span className="text-amber-600">Sin indicar</span>}
+              </dd>
+            </div>
+          </dl>
+        )}
+      </section>
 
       <section className="card">
         <h2 className="font-medium text-stone-700 mb-4">Servicios diarios</h2>

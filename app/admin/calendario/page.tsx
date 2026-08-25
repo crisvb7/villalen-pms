@@ -62,6 +62,8 @@ const EMPTY_FORM = {
 };
 
 const WINDOW_DAYS = 7;
+const ROOM_COL_WIDTH = 150;
+const DAY_COL_MIN_WIDTH = 110;
 
 function CalendarioPageContent() {
   const [viewStart, setViewStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -330,7 +332,7 @@ function CalendarioPageContent() {
           <p className="text-sm text-stone-500 mt-1">
             {editMode
               ? "Arrastra una reserva a otra fecha u habitación libre para moverla."
-              : "Clica en un día libre para crear una reserva."}
+              : "Clica en un día libre para crear una reserva, o en una reserva para ver su detalle."}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -423,10 +425,22 @@ function CalendarioPageContent() {
           <div className="p-12 text-center text-stone-400">No hay habitaciones configuradas.</div>
         ) : (
           <div className="overflow-auto max-h-[75vh]">
-            <table className="border-collapse">
+            <table
+              className="border-collapse table-fixed w-full"
+              style={{ minWidth: `${ROOM_COL_WIDTH + WINDOW_DAYS * DAY_COL_MIN_WIDTH}px` }}
+            >
+              <colgroup>
+                <col style={{ width: `${ROOM_COL_WIDTH}px` }} />
+                {days.map((day) => (
+                  <col
+                    key={day.toISOString()}
+                    style={{ width: `calc((100% - ${ROOM_COL_WIDTH}px) / ${WINDOW_DAYS})` }}
+                  />
+                ))}
+              </colgroup>
               <thead>
                 <tr>
-                  <th className="sticky top-0 left-0 z-20 bg-stone-50 border-b border-r border-stone-100 px-3 py-3 text-left text-xs uppercase tracking-wider text-stone-400 font-medium min-w-[150px] w-[150px]">
+                  <th className="sticky top-0 left-0 z-20 bg-stone-50 border-b border-r border-stone-100 px-3 py-3 text-left text-xs uppercase tracking-wider text-stone-400 font-medium">
                     Habitación
                   </th>
                   {days.map((day) => {
@@ -435,7 +449,7 @@ function CalendarioPageContent() {
                       <th
                         key={day.toISOString()}
                         className={cn(
-                          "sticky top-0 z-10 border-b py-2 text-center text-xs font-medium w-[150px] min-w-[150px] transition-colors",
+                          "sticky top-0 z-10 border-b py-2 text-center text-xs font-medium transition-colors",
                           today
                             ? "bg-violet-600 border-violet-600 hover:bg-violet-700"
                             : cn(
@@ -459,7 +473,7 @@ function CalendarioPageContent() {
               <tbody>
                 {rooms.map((room) => (
                   <tr key={room.id}>
-                    <td className="sticky left-0 z-10 border-b border-r border-stone-100 px-3 py-2 bg-white min-w-[150px] w-[150px]">
+                    <td className="sticky left-0 z-10 border-b border-r border-stone-100 px-3 py-2 bg-white">
                       <span className="text-sm text-stone-700">{room.name}</span>
                       <span className="block text-[10px] text-stone-400 mt-0.5">{room.capacity} pers.</span>
                     </td>
@@ -486,12 +500,17 @@ function CalendarioPageContent() {
                               }
                               return;
                             }
-                            if (!booking) openQuickCreate(room, day);
+                            if (booking) {
+                              if (!editMode) router.push(`/admin/reservas/${booking.id}`);
+                              return;
+                            }
+                            openQuickCreate(room, day);
                           }}
                           className={cn(
                             "border-b border-r p-0.5 text-center transition-colors",
                             today ? "border-l-2 border-r-2 border-l-violet-300 border-r-violet-300 bg-violet-50/50" : "border-stone-50",
                             !booking && !assigningBooking && "cursor-pointer",
+                            Boolean(booking) && !editMode && !assigningBooking && "cursor-pointer",
                             !booking && isWeekend(day) && !today && "bg-stone-50/60",
                             today ? "hover:bg-violet-100" : "hover:bg-stone-200/70",
                             isDragTarget && !booking && "bg-emerald-50 outline outline-1 outline-emerald-300",
@@ -508,9 +527,9 @@ function CalendarioPageContent() {
                               }}
                               onDragEnd={() => setDraggingId(null)}
                               className={cn(
-                                "h-8 rounded-md border px-1.5 text-xs leading-8 truncate text-left",
+                                "h-8 rounded-md border px-1.5 text-xs leading-8 truncate text-left transition-shadow",
                                 STATUS_BG[booking.status] ?? "bg-stone-100 border-stone-300",
-                                editMode && "cursor-grab active:cursor-grabbing",
+                                editMode ? "cursor-grab active:cursor-grabbing" : "hover:ring-2 hover:ring-villalen-400",
                                 draggingId === booking.id && "opacity-40"
                               )}
                               title={`${booking.guest.firstName} ${booking.guest.lastName} — ${format(

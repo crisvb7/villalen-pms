@@ -13,6 +13,17 @@ export interface ScannedMrzData {
   documentId?: string;
   nationality?: string;
   birthDate?: string; // yyyy-MM-dd
+  sex?: "H" | "M"; // Códigos oficiales SES (Hombre/Mujer), no los códigos ICAO M/F de la MRZ
+  documentSupportNumber?: string; // Solo presente en DNI/NIE (formato TD1), no en pasaportes
+}
+
+// La MRZ usa los códigos ICAO M/F/X (Male/Female/Unspecified) — hay que
+// traducirlos a los códigos oficiales españoles H/M (Hombre/Mujer) que
+// exige el parte de viajeros, que no coinciden en significado.
+function mapMrzSex(icaoSex: string | null | undefined): "H" | "M" | undefined {
+  if (icaoSex === "M") return "H";
+  if (icaoSex === "F") return "M";
+  return undefined;
 }
 
 function parseMrzBirthDate(yyMMdd: string): string | undefined {
@@ -34,19 +45,30 @@ function normalizeLine(raw: string, targetLen: number): string {
   return cleaned.padEnd(targetLen, "<");
 }
 
-function mapMrzFields(fields: {
-  firstName?: string | null;
-  lastName?: string | null;
-  documentNumber?: string | null;
-  nationality?: string | null;
-  birthDate?: string | null;
-}): ScannedMrzData {
+function mapMrzFields(
+  fields: {
+    firstName?: string | null;
+    lastName?: string | null;
+    documentNumber?: string | null;
+    nationality?: string | null;
+    birthDate?: string | null;
+    sex?: string | null;
+    optional1?: string | null;
+  },
+  // El número de soporte (reverso del DNI/NIE) va en el campo "optional1" de
+  // la MRZ, pero ese campo solo existe en el formato TD1 (DNI) — en
+  // pasaportes (TD3/TD2) no hay tal concepto, así que no debe rellenarse.
+  includeSupportNumber: boolean
+): ScannedMrzData {
+  const supportNumber = fields.optional1?.replace(/</g, "").trim();
   return {
     firstName: fields.firstName ?? undefined,
     lastName: fields.lastName ?? undefined,
     documentId: fields.documentNumber ?? undefined,
     nationality: fields.nationality ?? undefined,
     birthDate: fields.birthDate ? parseMrzBirthDate(fields.birthDate) : undefined,
+    sex: mapMrzSex(fields.sex),
+    documentSupportNumber: includeSupportNumber && supportNumber ? supportNumber : undefined,
   };
 }
 
@@ -74,7 +96,7 @@ export async function scanMrzFromImage(file: File): Promise<ScannedMrzData | nul
           const l1 = normalizeLine(candidates[i], len);
           const l2 = normalizeLine(candidates[i + 1], len);
           const result = parseMrz([l1, l2]);
-          if (result.fields.documentNumber) return mapMrzFields(result.fields);
+          if (result.fields.documentNumber) return mapMrzFields(result.fields, false);
         } catch {
           // formato/checksum no válido con estas líneas, seguir probando
         }
@@ -88,7 +110,7 @@ export async function scanMrzFromImage(file: File): Promise<ScannedMrzData | nul
           normalizeLine(l, 30)
         );
         const result = parseMrz(lines);
-        if (result.fields.documentNumber) return mapMrzFields(result.fields);
+        if (result.fields.documentNumber) return mapMrzFields(result.fields, true);
       } catch {
         // seguir probando
       }

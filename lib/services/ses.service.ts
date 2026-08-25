@@ -54,11 +54,19 @@ function buildSoapEnvelope(booking: {
   guest: {
     firstName: string;
     lastName: string;
+    secondLastName: string | null;
     documentId: string;
+    documentSupportNumber: string | null;
     nationality: string | null;
     birthDate: Date | null;
+    sex: string | null;
     phone: string | null;
     email: string;
+    addressStreet: string | null;
+    addressCity: string | null;
+    addressPostalCode: string | null;
+    addressProvince: string | null;
+    addressCountry: string | null;
   };
 }): string {
   const documentType = detectDocumentType(booking.guest.documentId);
@@ -79,13 +87,23 @@ function buildSoapEnvelope(booking: {
         <ses:fechaSalida>${formatDate(booking.checkOutDate, "yyyy-MM-dd")}</ses:fechaSalida>
         <ses:persona>
           <ses:nombre>${escapeXml(booking.guest.firstName)}</ses:nombre>
-          <ses:apellidos>${escapeXml(booking.guest.lastName)}</ses:apellidos>
+          <ses:apellido1>${escapeXml(booking.guest.lastName)}</ses:apellido1>
+          ${booking.guest.secondLastName ? `<ses:apellido2>${escapeXml(booking.guest.secondLastName)}</ses:apellido2>` : ""}
           <ses:tipoDocumento>${documentType}</ses:tipoDocumento>
           <ses:numeroDocumento>${escapeXml(booking.guest.documentId)}</ses:numeroDocumento>
+          ${booking.guest.documentSupportNumber ? `<ses:soporteDocumento>${escapeXml(booking.guest.documentSupportNumber)}</ses:soporteDocumento>` : ""}
           <ses:nacionalidad>${escapeXml(booking.guest.nationality ?? "ESP")}</ses:nacionalidad>
           ${booking.guest.birthDate ? `<ses:fechaNacimiento>${formatDate(booking.guest.birthDate, "yyyy-MM-dd")}</ses:fechaNacimiento>` : ""}
+          ${booking.guest.sex ? `<ses:sexo>${booking.guest.sex}</ses:sexo>` : ""}
           <ses:telefono>${escapeXml(booking.guest.phone ?? "")}</ses:telefono>
           <ses:email>${escapeXml(booking.guest.email)}</ses:email>
+          <ses:direccion>
+            <ses:via>${escapeXml(booking.guest.addressStreet ?? "")}</ses:via>
+            <ses:municipio>${escapeXml(booking.guest.addressCity ?? "")}</ses:municipio>
+            <ses:codigoPostal>${escapeXml(booking.guest.addressPostalCode ?? "")}</ses:codigoPostal>
+            ${booking.guest.addressProvince ? `<ses:provincia>${escapeXml(booking.guest.addressProvince)}</ses:provincia>` : ""}
+            <ses:pais>${escapeXml(booking.guest.addressCountry ?? "ESP")}</ses:pais>
+          </ses:direccion>
         </ses:persona>
       </ses:parteEntrada>
     </ses:comunicacionRequest>

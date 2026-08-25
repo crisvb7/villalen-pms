@@ -50,20 +50,39 @@ enum RoomType {
 
 // ─── HUÉSPEDES ────────────────────────────────────────────────────────────────
 model Guest {
-  id          String    @id @default(cuid())
-  firstName   String
-  lastName    String
-  documentId  String // DNI / NIE / Pasaporte — NUNCA datos bancarios
-  email       String
-  phone       String?
-  nationality String?   @default("ES")
-  birthDate   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  firstName      String
+  lastName       String // Primer apellido
+  secondLastName String? // Segundo apellido — opcional (nacionalidades con un solo apellido)
+  documentId     String // DNI / NIE / Pasaporte — NUNCA datos bancarios
+  email          String
+  phone          String?
+  nationality    String?   @default("ES")
+  birthDate      DateTime?
+  sex            GuestSex? // Exigido por el parte de viajeros (SES.HOSPEDAJES / RD 933/2021)
+
+  // Número de soporte del documento — distinto del número de documento,
+  // obligatorio para DNI/NIE español en el parte de viajeros.
+  documentSupportNumber String?
+
+  // Dirección de residencia — exigida por el parte de viajeros para todo huésped.
+  addressStreet     String?
+  addressCity       String? // Municipio
+  addressPostalCode String?
+  addressProvince   String?
+  addressCountry    String? @default("ES")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   bookings Booking[]
 
   @@map("guests")
+}
+
+enum GuestSex {
+  H // Hombre
+  M // Mujer
 }
 
 // ─── RESERVAS ─────────────────────────────────────────────────────────────────

@@ -79,16 +79,29 @@ export async function generateTravelerRecordXML(
         Los datos adicionales de acompañantes deben recogerse en check-in.
       -->
       <Nombre>${escapeXml(guest.firstName)}</Nombre>
-      <Apellidos>${escapeXml(guest.lastName)}</Apellidos>
+      <Apellido1>${escapeXml(guest.lastName)}</Apellido1>
+      ${guest.secondLastName
+        ? `<Apellido2>${escapeXml(guest.secondLastName)}</Apellido2>`
+        : "<!-- Apellido2: no aportado (opcional) -->"}
       <TipoDocumento>${documentType}</TipoDocumento>
       <NumeroDocumento>${escapeXml(guest.documentId)}</NumeroDocumento>
+      ${guest.documentSupportNumber
+        ? `<SoporteDocumento>${escapeXml(guest.documentSupportNumber)}</SoporteDocumento>`
+        : "<!-- SoporteDocumento: no disponible - recoger en check-in (obligatorio para DNI/NIE) -->"}
       <Nacionalidad>${escapeXml(guest.nationality ?? "ESP")}</Nacionalidad>
       ${guest.birthDate
         ? `<FechaNacimiento>${format(guest.birthDate, "yyyy-MM-dd")}</FechaNacimiento>`
         : "<!-- FechaNacimiento: No disponible - recoger en check-in -->"}
-      <Sexo><!-- Recoger en check-in --></Sexo>
+      ${guest.sex ? `<Sexo>${guest.sex}</Sexo>` : "<!-- Sexo: no disponible - recoger en check-in -->"}
       <Telefono>${escapeXml(guest.phone ?? "")}</Telefono>
       <Email>${escapeXml(guest.email)}</Email>
+      <Direccion>
+        <Via>${escapeXml(guest.addressStreet ?? "")}</Via>
+        <Municipio>${escapeXml(guest.addressCity ?? "")}</Municipio>
+        <CodigoPostal>${escapeXml(guest.addressPostalCode ?? "")}</CodigoPostal>
+        ${guest.addressProvince ? `<Provincia>${escapeXml(guest.addressProvince)}</Provincia>` : ""}
+        <Pais>${escapeXml(guest.addressCountry ?? "ESP")}</Pais>
+      </Direccion>
     </Viajero>
   </Viajeros>
 
