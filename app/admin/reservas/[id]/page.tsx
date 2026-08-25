@@ -84,7 +84,17 @@ interface Traveler {
   lastName: string;
   secondLastName: string | null;
   documentId: string | null;
+  documentSupportNumber: string | null;
+  nationality: string | null;
   birthDate: string | null;
+  sex: "H" | "M" | null;
+  addressStreet: string | null;
+  addressCity: string | null;
+  addressPostalCode: string | null;
+  addressProvince: string | null;
+  addressCountry: string | null;
+  phone: string | null;
+  email: string | null;
   relationshipToLead: string | null;
 }
 
@@ -693,16 +703,46 @@ export default function BookingDetailPage() {
             {travelers.map((t) => (
               <li
                 key={t.id}
-                className="flex items-center justify-between gap-2 bg-stone-50 border border-stone-200 rounded px-3 py-2 text-sm"
+                className="flex items-start justify-between gap-2 bg-stone-50 border border-stone-200 rounded px-3 py-2 text-sm"
               >
-                <span>
-                  {t.firstName} {t.lastName} {t.secondLastName ?? ""}
-                  {t.documentId ? ` · ${t.documentId}` : ""}
-                  {t.relationshipToLead ? ` · ${t.relationshipToLead}` : ""}
-                </span>
+                <div>
+                  <p className="text-stone-800">
+                    {t.firstName} {t.lastName} {t.secondLastName ?? ""}
+                    {t.documentId
+                      ? ` · ${detectDocumentType(t.documentId)} ${t.documentId}${
+                          t.documentSupportNumber ? ` (soporte ${t.documentSupportNumber})` : ""
+                        }`
+                      : " · Sin documento (menor de edad)"}
+                  </p>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    {[
+                      t.sex ? SEX_LABELS[t.sex] : null,
+                      t.birthDate ? formatDate(t.birthDate) : null,
+                      t.nationality,
+                      t.relationshipToLead ? `Parentesco: ${t.relationshipToLead}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Sin más datos"}
+                  </p>
+                  {(t.addressStreet || t.phone || t.email) && (
+                    <p className="text-xs text-stone-400 mt-0.5">
+                      {[
+                        t.addressStreet,
+                        t.addressPostalCode,
+                        t.addressCity,
+                        t.addressProvince,
+                        t.addressCountry,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                      {t.phone ? ` · ${t.phone}` : ""}
+                      {t.email ? ` · ${t.email}` : ""}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => handleRemoveTraveler(t.id)}
-                  className="text-red-600 hover:text-red-800 text-xs"
+                  className="text-red-600 hover:text-red-800 text-xs flex-shrink-0"
                 >
                   Eliminar
                 </button>
