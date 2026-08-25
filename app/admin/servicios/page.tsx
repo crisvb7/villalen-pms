@@ -11,8 +11,8 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const SERVICE_META = [
-  { type: "BREAKFAST" as const, label: "Desayuno", icon: "🍳" },
-  { type: "DINNER" as const, label: "Cena", icon: "🍽️" },
+  { type: "BREAKFAST" as const, label: "Desayuno", icon: "🥐" },
+  { type: "DINNER" as const, label: "Cena", icon: "🍴" },
   { type: "CLEANING" as const, label: "Limpieza", icon: "🧹" },
 ];
 
@@ -133,7 +133,7 @@ export default function ServiciosHoyPage() {
 
       <div className="card mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <p className="font-medium text-stone-800">🍽️ Servicio de cena (temporada de peregrinos)</p>
+          <p className="font-medium text-stone-800">🍴 Servicio de cena (temporada de peregrinos)</p>
           <p className="text-xs text-stone-500 mt-0.5">
             {dinnerEnabled === false
               ? "Apagado: los huéspedes no pueden pedir cena desde la app."

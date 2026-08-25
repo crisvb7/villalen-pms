@@ -19,7 +19,7 @@ const navItems = [
   { href: "/admin/estadisticas", label: "Estadísticas", icon: "📊" },
   { href: "/admin/calendario", label: "Calendario", icon: "📆" },
   { href: "/admin/reservas", label: "Reservas", icon: "📅" },
-  { href: "/admin/servicios", label: "Servicios del día", icon: "🍳" },
+  { href: "/admin/servicios", label: "Servicios del día", icon: "🥐" },
   { href: "/admin/presupuestos", label: "Presupuestos", icon: "📝" },
   { href: "/admin/facturas", label: "Facturas", icon: "🧾" },
   { href: "/admin/gastos", label: "Gastos", icon: "💸" },

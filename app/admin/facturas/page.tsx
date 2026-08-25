@@ -187,7 +187,7 @@ export default function FacturasPage() {
                           className="chip bg-terracotta-50 text-terracotta-800 border-terracotta-200 hover:bg-terracotta-100"
                         >
                           {invoice.extras.length > 0
-                            ? `🍽️ Servicios (${invoice.extras.length})`
+                            ? `🍴 Servicios (${invoice.extras.length})`
                             : "+ Añadir servicio (desayuno, etc.)"}
                         </button>
                         {!invoice.isPaid && (

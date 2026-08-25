@@ -19,8 +19,8 @@ import {
 } from "@/lib/utils";
 
 const SERVICE_META: { type: "BREAKFAST" | "DINNER" | "CLEANING"; label: string; icon: string }[] = [
-  { type: "BREAKFAST", label: "Desayuno", icon: "🍳" },
-  { type: "DINNER", label: "Cena", icon: "🍽️" },
+  { type: "BREAKFAST", label: "Desayuno", icon: "🥐" },
+  { type: "DINNER", label: "Cena", icon: "🍴" },
   { type: "CLEANING", label: "Limpieza", icon: "🧹" },
 ];
 

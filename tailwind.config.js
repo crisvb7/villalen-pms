@@ -10,7 +10,19 @@ module.exports = {
     extend: {
       fontFamily: {
         serif: ["'Playfair Display'", "Georgia", "serif"],
-        sans: ["'DM Sans'", "system-ui", "sans-serif"],
+        // La lista termina en las fuentes de emoji del sistema (igual que el
+        // stack por defecto de Tailwind) — sin ellas, el navegador intenta
+        // dibujar los emoji con 'DM Sans'/Segoe UI, que solo tienen versiones
+        // monocromas y deformadas de algunos símbolos en vez del emoji real.
+        sans: [
+          "'DM Sans'",
+          "system-ui",
+          "sans-serif",
+          "'Apple Color Emoji'",
+          "'Segoe UI Emoji'",
+          "'Segoe UI Symbol'",
+          "'Noto Color Emoji'",
+        ],
         mono: ["'DM Mono'", "monospace"],
       },
       colors: {
