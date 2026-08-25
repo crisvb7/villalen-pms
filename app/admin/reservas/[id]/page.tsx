@@ -108,6 +108,15 @@ const EMPTY_TRAVELER_FORM = {
   nationality: "",
   sex: "" as "" | "H" | "M",
   relationshipToLead: "",
+  sameAddressAsLead: true,
+  addressStreet: "",
+  addressCity: "",
+  addressMunicipalityCode: "",
+  addressPostalCode: "",
+  addressProvince: "",
+  addressCountry: "",
+  phone: "",
+  email: "",
 };
 
 function isMinorDob(dob: string): boolean {
@@ -324,12 +333,40 @@ export default function BookingDetailPage() {
       setTravelerError("El documento es obligatorio para un acompañante mayor de edad.");
       return;
     }
+    if (!travelerForm.sameAddressAsLead) {
+      const country = travelerForm.addressCountry.toUpperCase();
+      const isSpain = country === "ES" || country === "ESP";
+      if (
+        !travelerForm.addressStreet.trim() ||
+        !travelerForm.addressCity.trim() ||
+        !travelerForm.addressPostalCode.trim() ||
+        !travelerForm.addressCountry.trim() ||
+        (isSpain && !travelerForm.addressMunicipalityCode.trim())
+      ) {
+        setTravelerError("Completa la dirección del acompañante (o marca que es la misma que la del titular).");
+        return;
+      }
+    }
     setSavingTraveler(true);
     try {
+      const { sameAddressAsLead, ...rest } = travelerForm;
+      const payload = sameAddressAsLead
+        ? {
+            ...rest,
+            addressStreet: undefined,
+            addressCity: undefined,
+            addressMunicipalityCode: undefined,
+            addressPostalCode: undefined,
+            addressProvince: undefined,
+            addressCountry: undefined,
+            phone: undefined,
+            email: undefined,
+          }
+        : rest;
       const res = await fetch(`/api/bookings/${id}/travelers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(travelerForm),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -837,6 +874,128 @@ export default function BookingDetailPage() {
                 </>
               )}
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">Nacionalidad</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={travelerForm.nationality}
+                  onChange={(e) => setTravelerForm((f) => ({ ...f, nationality: e.target.value.toUpperCase() }))}
+                  placeholder="ESP"
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Sexo</label>
+                <select
+                  className="input w-full text-sm"
+                  value={travelerForm.sex}
+                  onChange={(e) => setTravelerForm((f) => ({ ...f, sex: e.target.value as "" | "H" | "M" }))}
+                >
+                  <option value="">Selecciona…</option>
+                  <option value="H">Hombre</option>
+                  <option value="M">Mujer</option>
+                </select>
+              </div>
+              <div>
+                <label className="label mb-1">Teléfono</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={travelerForm.phone}
+                  onChange={(e) => setTravelerForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder={travelerForm.sameAddressAsLead ? "Opcional (usa el del titular)" : ""}
+                />
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-stone-600 mb-3">
+              <input
+                type="checkbox"
+                checked={travelerForm.sameAddressAsLead}
+                onChange={(e) => setTravelerForm((f) => ({ ...f, sameAddressAsLead: e.target.checked }))}
+              />
+              Vive en la misma dirección que el titular ({booking.guest.addressStreet || "…"})
+            </label>
+
+            {!travelerForm.sameAddressAsLead && (
+              <div className="border border-stone-200 rounded p-3 mb-3">
+                <div className="mb-3">
+                  <label className="label mb-1">Dirección (calle y número) *</label>
+                  <input
+                    type="text"
+                    className="input w-full text-sm"
+                    value={travelerForm.addressStreet}
+                    onChange={(e) => setTravelerForm((f) => ({ ...f, addressStreet: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                  <div>
+                    <label className="label mb-1">Municipio *</label>
+                    <input
+                      type="text"
+                      className="input w-full text-sm"
+                      value={travelerForm.addressCity}
+                      onChange={(e) => setTravelerForm((f) => ({ ...f, addressCity: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="label mb-1">Cód. INE municipio *</label>
+                    <input
+                      type="text"
+                      className="input w-full text-sm"
+                      value={travelerForm.addressMunicipalityCode}
+                      onChange={(e) =>
+                        setTravelerForm((f) => ({ ...f, addressMunicipalityCode: e.target.value }))
+                      }
+                      maxLength={5}
+                    />
+                  </div>
+                  <div>
+                    <label className="label mb-1">C.P. *</label>
+                    <input
+                      type="text"
+                      className="input w-full text-sm"
+                      value={travelerForm.addressPostalCode}
+                      onChange={(e) => setTravelerForm((f) => ({ ...f, addressPostalCode: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="label mb-1">País *</label>
+                    <input
+                      type="text"
+                      className="input w-full text-sm"
+                      value={travelerForm.addressCountry}
+                      onChange={(e) =>
+                        setTravelerForm((f) => ({ ...f, addressCountry: e.target.value.toUpperCase() }))
+                      }
+                      placeholder="ES"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label mb-1">Provincia</label>
+                    <input
+                      type="text"
+                      className="input w-full text-sm"
+                      value={travelerForm.addressProvince}
+                      onChange={(e) => setTravelerForm((f) => ({ ...f, addressProvince: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="label mb-1">Email</label>
+                    <input
+                      type="email"
+                      className="input w-full text-sm"
+                      value={travelerForm.email}
+                      onChange={(e) => setTravelerForm((f) => ({ ...f, email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {travelerError && <p className="text-xs text-red-600 mb-3">{travelerError}</p>}
 
