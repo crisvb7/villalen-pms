@@ -131,7 +131,7 @@ export default function ServiciosHoyPage() {
         </div>
       </div>
 
-      <div className="card mb-6 flex items-center justify-between flex-wrap gap-3">
+      <div className="card p-6 mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="font-medium text-stone-800">🍴 Servicio de cena (temporada de peregrinos)</p>
           <p className="text-xs text-stone-500 mt-0.5">
