@@ -134,6 +134,37 @@ function CalendarioPageContent() {
     });
   };
 
+  // Agrupa los días consecutivos de una misma reserva en un único tramo
+  // (celda con colSpan) en vez de repetir un cuadro por noche — si la
+  // reserva empieza antes o acaba después de la ventana visible, el tramo
+  // simplemente queda recortado a los días que se ven.
+  interface RowSegment {
+    day: Date;
+    span: number;
+    booking: Booking | null;
+  }
+
+  const buildRowSegments = (room: Room): RowSegment[] => {
+    const segments: RowSegment[] = [];
+    let i = 0;
+    while (i < days.length) {
+      const day = days[i];
+      const booking = getBooking(day, room.id);
+      if (!booking) {
+        segments.push({ day, span: 1, booking: null });
+        i += 1;
+        continue;
+      }
+      let span = 1;
+      while (i + span < days.length && getBooking(days[i + span], room.id)?.id === booking.id) {
+        span += 1;
+      }
+      segments.push({ day, span, booking });
+      i += span;
+    }
+    return segments;
+  };
+
   const isRoomEligibleForAssignment = (room: Room) => {
     if (!assigningBooking) return false;
     if (room.type !== assigningBooking.roomType) return false;
@@ -477,19 +508,19 @@ function CalendarioPageContent() {
                       <span className="text-sm text-stone-700">{room.name}</span>
                       <span className="block text-[10px] text-stone-400 mt-0.5">{room.capacity} pers.</span>
                     </td>
-                    {days.map((day) => {
-                      const booking = getBooking(day, room.id);
+                    {buildRowSegments(room).map(({ day, span, booking }) => {
                       const today = isToday(day);
                       const isDragTarget =
                         editMode &&
                         draggingId &&
                         (!booking || booking.id === draggingId) &&
                         (!draggingBooking || room.type === draggingBooking.roomType);
-                      const isAssignTarget = isAssignableCell(room, day);
-                      const isAssignBlocked = Boolean(assigningBooking) && !isAssignTarget;
+                      const isAssignTarget = !booking && isAssignableCell(room, day);
+                      const isAssignBlocked = Boolean(assigningBooking) && !booking && !isAssignTarget;
                       return (
                         <td
                           key={day.toISOString()}
+                          colSpan={span}
                           onDragOver={(e) => handleDragOver(e, room, day)}
                           onDrop={(e) => handleDrop(e, room, day)}
                           onClick={() => {
@@ -508,11 +539,13 @@ function CalendarioPageContent() {
                           }}
                           className={cn(
                             "border-b border-r p-0.5 text-center transition-colors",
-                            today ? "border-l-2 border-r-2 border-l-violet-300 border-r-violet-300 bg-violet-50/50" : "border-stone-50",
+                            span === 1 && today
+                              ? "border-l-2 border-r-2 border-l-violet-300 border-r-violet-300 bg-violet-50/50"
+                              : "border-stone-50",
                             !booking && !assigningBooking && "cursor-pointer",
                             Boolean(booking) && !editMode && !assigningBooking && "cursor-pointer",
                             !booking && isWeekend(day) && !today && "bg-stone-50/60",
-                            today ? "hover:bg-violet-100" : "hover:bg-stone-200/70",
+                            span === 1 && today ? "hover:bg-violet-100" : "hover:bg-stone-200/70",
                             isDragTarget && !booking && "bg-emerald-50 outline outline-1 outline-emerald-300",
                             isAssignTarget && "bg-emerald-50 outline outline-1 outline-emerald-400 cursor-pointer",
                             isAssignBlocked && "opacity-40 cursor-not-allowed"
@@ -527,7 +560,7 @@ function CalendarioPageContent() {
                               }}
                               onDragEnd={() => setDraggingId(null)}
                               className={cn(
-                                "h-8 rounded-md border px-1.5 text-xs leading-8 truncate text-left transition-shadow",
+                                "h-8 rounded-md border px-2 text-xs leading-8 truncate text-center transition-shadow",
                                 STATUS_BG[booking.status] ?? "bg-stone-100 border-stone-300",
                                 editMode ? "cursor-grab active:cursor-grabbing" : "hover:ring-2 hover:ring-villalen-400",
                                 draggingId === booking.id && "opacity-40"
