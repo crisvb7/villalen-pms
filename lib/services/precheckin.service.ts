@@ -35,6 +35,7 @@ export async function getBookingForPrecheckin(bookingId: string) {
       sex: booking.guest.sex,
       addressStreet: booking.guest.addressStreet,
       addressCity: booking.guest.addressCity,
+      addressMunicipalityCode: booking.guest.addressMunicipalityCode,
       addressPostalCode: booking.guest.addressPostalCode,
       addressProvince: booking.guest.addressProvince,
       addressCountry: booking.guest.addressCountry,
@@ -57,6 +58,7 @@ export interface PrecheckinInput {
   sex?: GuestSex;
   addressStreet?: string;
   addressCity?: string;
+  addressMunicipalityCode?: string;
   addressPostalCode?: string;
   addressProvince?: string;
   addressCountry?: string;
@@ -89,6 +91,7 @@ export async function submitPrecheckin(bookingId: string, input: PrecheckinInput
       sex: input.sex,
       addressStreet: input.addressStreet,
       addressCity: input.addressCity,
+      addressMunicipalityCode: input.addressMunicipalityCode,
       addressPostalCode: input.addressPostalCode,
       addressProvince: input.addressProvince,
       addressCountry: input.addressCountry,

@@ -37,6 +37,7 @@ interface Guest {
   sex: "H" | "M" | null;
   addressStreet: string | null;
   addressCity: string | null;
+  addressMunicipalityCode: string | null;
   addressPostalCode: string | null;
   addressProvince: string | null;
   addressCountry: string | null;
@@ -71,10 +72,39 @@ const EMPTY_GUEST_FORM = {
   phone: "",
   addressStreet: "",
   addressCity: "",
+  addressMunicipalityCode: "",
   addressPostalCode: "",
   addressProvince: "",
   addressCountry: "",
 };
+
+interface Traveler {
+  id: string;
+  firstName: string;
+  lastName: string;
+  secondLastName: string | null;
+  documentId: string | null;
+  birthDate: string | null;
+  relationshipToLead: string | null;
+}
+
+const EMPTY_TRAVELER_FORM = {
+  firstName: "",
+  lastName: "",
+  secondLastName: "",
+  documentId: "",
+  documentSupportNumber: "",
+  birthDate: "",
+  nationality: "",
+  sex: "" as "" | "H" | "M",
+  relationshipToLead: "",
+};
+
+function isMinorDob(dob: string): boolean {
+  if (!dob) return false;
+  const age = (Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  return age < 18;
+}
 
 interface ServiceRequest {
   id: string;
@@ -105,17 +135,24 @@ export default function BookingDetailPage() {
   const [savingGuest, setSavingGuest] = useState(false);
   const [guestError, setGuestError] = useState("");
   const [sendingSes, setSendingSes] = useState(false);
+  const [travelers, setTravelers] = useState<Traveler[]>([]);
+  const [addingTraveler, setAddingTraveler] = useState(false);
+  const [travelerForm, setTravelerForm] = useState(EMPTY_TRAVELER_FORM);
+  const [savingTraveler, setSavingTraveler] = useState(false);
+  const [travelerError, setTravelerError] = useState("");
 
   const load = useCallback(async () => {
-    const [bRes, sRes, mRes] = await Promise.all([
+    const [bRes, sRes, mRes, tRes] = await Promise.all([
       fetch(`/api/bookings/${id}`),
       fetch(`/api/bookings/${id}/services`),
       fetch(`/api/bookings/${id}/messages`),
+      fetch(`/api/bookings/${id}/travelers`),
     ]);
-    const [bData, sData, mData] = await Promise.all([bRes.json(), sRes.json(), mRes.json()]);
+    const [bData, sData, mData, tData] = await Promise.all([bRes.json(), sRes.json(), mRes.json(), tRes.json()]);
     setBooking(bData.data ?? null);
     setServices(sData.data ?? []);
     setMessages(mData.data ?? []);
+    setTravelers(tData.data ?? []);
     setLoading(false);
   }, [id]);
 
@@ -209,6 +246,7 @@ export default function BookingDetailPage() {
       phone: g.phone ?? "",
       addressStreet: g.addressStreet ?? "",
       addressCity: g.addressCity ?? "",
+      addressMunicipalityCode: g.addressMunicipalityCode ?? "",
       addressPostalCode: g.addressPostalCode ?? "",
       addressProvince: g.addressProvince ?? "",
       addressCountry: g.addressCountry ?? "ES",
@@ -258,6 +296,48 @@ export default function BookingDetailPage() {
     const link = `${window.location.origin}/precheckin/${id}`;
     await navigator.clipboard.writeText(link);
     alert("Enlace de precheckin copiado al portapapeles.");
+  }
+
+  async function handleAddTraveler(e: React.FormEvent) {
+    e.preventDefault();
+    setTravelerError("");
+    if (!travelerForm.firstName.trim() || !travelerForm.lastName.trim()) {
+      setTravelerError("Nombre y primer apellido son obligatorios.");
+      return;
+    }
+    const minor = isMinorDob(travelerForm.birthDate);
+    if (minor && !travelerForm.relationshipToLead.trim()) {
+      setTravelerError("Indica el parentesco con el titular para un menor de edad.");
+      return;
+    }
+    if (!minor && !travelerForm.documentId.trim()) {
+      setTravelerError("El documento es obligatorio para un acompañante mayor de edad.");
+      return;
+    }
+    setSavingTraveler(true);
+    try {
+      const res = await fetch(`/api/bookings/${id}/travelers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(travelerForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTravelerError(data.error ?? "No se pudo añadir el acompañante.");
+        return;
+      }
+      setTravelers((prev) => [...prev, data.data]);
+      setTravelerForm(EMPTY_TRAVELER_FORM);
+      setAddingTraveler(false);
+    } finally {
+      setSavingTraveler(false);
+    }
+  }
+
+  async function handleRemoveTraveler(travelerId: string) {
+    if (!confirm("¿Eliminar este acompañante de la reserva?")) return;
+    setTravelers((prev) => prev.filter((t) => t.id !== travelerId));
+    await fetch(`/api/bookings/${id}/travelers/${travelerId}`, { method: "DELETE" });
   }
 
   if (loading || !booking) {
@@ -481,7 +561,7 @@ export default function BookingDetailPage() {
                 onChange={(e) => setGuestForm((f) => ({ ...f, addressStreet: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
               <div>
                 <label className="label mb-1">Municipio *</label>
                 <input
@@ -489,6 +569,17 @@ export default function BookingDetailPage() {
                   className="input w-full text-sm"
                   value={guestForm.addressCity}
                   onChange={(e) => setGuestForm((f) => ({ ...f, addressCity: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Cód. INE municipio *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={guestForm.addressMunicipalityCode}
+                  onChange={(e) => setGuestForm((f) => ({ ...f, addressMunicipalityCode: e.target.value }))}
+                  placeholder="5 dígitos"
+                  maxLength={5}
                 />
               </div>
               <div>
@@ -586,6 +677,156 @@ export default function BookingDetailPage() {
               </dd>
             </div>
           </dl>
+        )}
+      </section>
+
+      <section className="card p-6">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <h2 className="font-medium text-stone-700">Acompañantes</h2>
+        </div>
+        <p className="text-sm text-stone-500 mb-4">
+          El parte de viajeros exige reportar a todos los huéspedes, no solo al titular.
+        </p>
+
+        {travelers.length > 0 && (
+          <ul className="mb-4 space-y-2">
+            {travelers.map((t) => (
+              <li
+                key={t.id}
+                className="flex items-center justify-between gap-2 bg-stone-50 border border-stone-200 rounded px-3 py-2 text-sm"
+              >
+                <span>
+                  {t.firstName} {t.lastName} {t.secondLastName ?? ""}
+                  {t.documentId ? ` · ${t.documentId}` : ""}
+                  {t.relationshipToLead ? ` · ${t.relationshipToLead}` : ""}
+                </span>
+                <button
+                  onClick={() => handleRemoveTraveler(t.id)}
+                  className="text-red-600 hover:text-red-800 text-xs"
+                >
+                  Eliminar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {addingTraveler ? (
+          <form onSubmit={handleAddTraveler} className="border-t border-stone-100 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={travelerForm.firstName}
+                  onChange={(e) => setTravelerForm((f) => ({ ...f, firstName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Primer apellido *</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={travelerForm.lastName}
+                  onChange={(e) => setTravelerForm((f) => ({ ...f, lastName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label mb-1">Segundo apellido</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm"
+                  value={travelerForm.secondLastName}
+                  onChange={(e) => setTravelerForm((f) => ({ ...f, secondLastName: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="label mb-1">Fecha de nacimiento</label>
+                <input
+                  type="date"
+                  className="input w-full text-sm"
+                  value={travelerForm.birthDate}
+                  onChange={(e) => setTravelerForm((f) => ({ ...f, birthDate: e.target.value }))}
+                />
+              </div>
+              {isMinorDob(travelerForm.birthDate) ? (
+                <div className="md:col-span-2">
+                  <label className="label mb-1">Parentesco con el titular *</label>
+                  <input
+                    type="text"
+                    className="input w-full text-sm"
+                    value={travelerForm.relationshipToLead}
+                    onChange={(e) => setTravelerForm((f) => ({ ...f, relationshipToLead: e.target.value }))}
+                    placeholder="Ej. hijo/a, nieto/a…"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="label mb-1">DNI / NIE / Pasaporte *</label>
+                    <input
+                      type="text"
+                      className="input w-full text-sm"
+                      value={travelerForm.documentId}
+                      onChange={(e) =>
+                        setTravelerForm((f) => ({ ...f, documentId: e.target.value.toUpperCase() }))
+                      }
+                    />
+                  </div>
+                  {(detectDocumentType(travelerForm.documentId || "X") === "DNI" ||
+                    detectDocumentType(travelerForm.documentId || "X") === "NIE") && (
+                    <div>
+                      <label className="label mb-1">Nº de soporte *</label>
+                      <input
+                        type="text"
+                        className="input w-full text-sm"
+                        value={travelerForm.documentSupportNumber}
+                        onChange={(e) =>
+                          setTravelerForm((f) => ({
+                            ...f,
+                            documentSupportNumber: e.target.value.toUpperCase(),
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {travelerError && <p className="text-xs text-red-600 mb-3">{travelerError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingTraveler(false);
+                  setTravelerError("");
+                }}
+                className="btn-ghost text-sm"
+                disabled={savingTraveler}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn-primary text-sm" disabled={savingTraveler}>
+                {savingTraveler ? "Guardando…" : "Añadir acompañante"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button
+            onClick={() => {
+              setTravelerForm(EMPTY_TRAVELER_FORM);
+              setAddingTraveler(true);
+            }}
+            className="chip bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200"
+          >
+            + Añadir acompañante
+          </button>
         )}
       </section>
 

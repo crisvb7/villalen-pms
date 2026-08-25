@@ -207,21 +207,49 @@ loguea que el envío se omite, nada se rompe).
 ## 👮 Ficha Policial (SES.HOSPEDAJES)
 
 Comunicación real al Ministerio del Interior (RD 933/2021), disparada a mano por
-el personal desde el botón "📤 Enviar a Policía" en `/admin/reservas` (nunca
-automática — es una comunicación oficial, la primera vez conviene revisarla).
+el personal desde el botón "📤 Enviar a Policía" en `/admin/reservas` o en el
+detalle de la reserva (nunca automática — es una comunicación oficial).
+
+El sobre SOAP (`lib/services/ses.service.ts`) está construido y verificado
+contra el manual técnico oficial "Interfaz servicios externos - Servicio de
+Comunicación Hospedajes v3.1.2", incluido su ejemplo de petición real. Puntos
+clave de la estructura:
+
+- Autenticación **HTTP Basic** (no WS-Security) — usuario/contraseña del
+  "Servicio Web" en la cabecera `Authorization`, `<soapenv:Header/>` vacío.
+- El cuerpo SOAP solo lleva `codigoArrendador`/`aplicacion`/`tipoOperacion`/
+  `tipoComunicacion`; los datos del parte (contrato + cada persona alojada)
+  van en un **fichero XML aparte, comprimido en ZIP y codificado en Base64**
+  dentro de la etiqueta `<solicitud>` (usa `jszip` para la compresión).
+- Se envían **todos los huéspedes de la reserva**, no solo el titular — ver
+  "Acompañantes" en el detalle de la reserva, que usa el modelo
+  `BookingTraveler`.
 
 1. Alta en [sede.interior.gob.es](https://sede.interior.gob.es/portal/sede/informacion_hospedajes)
-   y activación del "Servicio Web" (WS) — te llegan por email un usuario y
-   contraseña **distintos** de los del portal.
-2. Rellena `SES_WS_USERNAME`, `SES_WS_PASSWORD` y `SES_ENVIRONMENT=test` en `.env.local`.
-3. Prueba contra el entorno de test (`pre-ses.mir.es`) antes de pasar a `production`.
+   y activación del "Servicio Web" (WS) — el usuario sigue el patrón `NIF+WS`
+   (o `CIF+WS` si es sociedad) y te llega una contraseña **distinta** de la
+   del portal.
+2. Rellena en `.env.local`: `SES_WS_USERNAME`, `SES_WS_PASSWORD`,
+   `SES_ENVIRONMENT=test`, `SES_LANDLORD_CODE` (código de arrendador, 10
+   dígitos — el mismo para todos tus alojamientos) y `SES_ESTABLISHMENT_CODE`
+   (código de establecimiento, uno por alojamiento). Ambos códigos llegan por
+   email al darte de alta.
+3. Prueba contra el entorno de test (`pre-ses.mir.es`) antes de pasar a
+   `production`.
 
-> ⚠️ El sobre SOAP (`lib/services/ses.service.ts`) está construido con los
-> campos que exige el RD 933/2021, pero **no se ha podido verificar contra el
-> WSDL real** de Interior (el endpoint exige credenciales incluso para
-> servirlo). Antes de usarlo en producción, solicita el manual técnico al dar
-> de alta el Servicio Web y ajusta el envelope si los nombres de
-> operación/elemento difieren.
+> ⚠️ Códigos sin verificar todavía (el manual no los incluye — se consultan en
+> tiempo de ejecución con la operación `catalogo`, ver `queryCatalog()` en
+> `ses.service.ts`): el código de tipo de documento para pasaporte (se usa
+> `"PAS"` sin confirmar; `NIF`/`NIE` sí están confirmados en el manual), y los
+> códigos de forma de pago distintos de `"EFECT"` (efectivo, el único que
+> aparece en el ejemplo oficial). Antes de ir a producción, llama a
+> `queryCatalog("TIPO_DOCUMENTO")` y `queryCatalog("TIPO_PAGO")` contra el
+> entorno de test y ajusta `DOCUMENT_TYPE_CODES`/`mapPaymentMethod` si
+> difieren. Además, para direcciones en España el parte exige el **código de
+> municipio del INE** (5 dígitos, no el nombre) — se pide en el formulario de
+> precheckin y en el admin, pero no hay una base de datos de municipios
+> integrada, así que quien lo rellena tiene que buscarlo a mano (enlace al
+> callejero del INE incluido en el formulario).
 
 ## 📊 Informe para el INE
 

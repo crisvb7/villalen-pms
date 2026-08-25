@@ -25,6 +25,7 @@ export async function generateTravelerRecordXML(
     include: {
       guest: true,
       room: true,
+      travelers: true,
     },
   });
 
@@ -32,8 +33,51 @@ export async function generateTravelerRecordXML(
     throw new Error(`Reserva no encontrada: ${bookingId}`);
   }
 
-  const { guest, room } = booking;
+  const { guest, room, travelers } = booking;
   const documentType = detectDocumentType(guest.documentId);
+
+  const viajeroXml = (
+    p: {
+      firstName: string;
+      lastName: string;
+      secondLastName: string | null;
+      documentId: string | null;
+      documentSupportNumber: string | null;
+      nationality: string | null;
+      birthDate: Date | null;
+      sex: string | null;
+      phone: string | null;
+      email: string | null;
+      addressStreet: string | null;
+      addressCity: string | null;
+      addressPostalCode: string | null;
+      addressProvince: string | null;
+      addressCountry: string | null;
+      relationshipToLead?: string | null;
+    }
+  ) => `<Viajero>
+      <Nombre>${escapeXml(p.firstName)}</Nombre>
+      <Apellido1>${escapeXml(p.lastName)}</Apellido1>
+      ${p.secondLastName ? `<Apellido2>${escapeXml(p.secondLastName)}</Apellido2>` : ""}
+      ${p.documentId
+        ? `<TipoDocumento>${detectDocumentType(p.documentId)}</TipoDocumento>
+      <NumeroDocumento>${escapeXml(p.documentId)}</NumeroDocumento>
+      ${p.documentSupportNumber ? `<SoporteDocumento>${escapeXml(p.documentSupportNumber)}</SoporteDocumento>` : ""}`
+        : "<!-- Sin documento propio (menor de edad) -->"}
+      <Nacionalidad>${escapeXml(p.nationality ?? "ESP")}</Nacionalidad>
+      ${p.birthDate ? `<FechaNacimiento>${format(p.birthDate, "yyyy-MM-dd")}</FechaNacimiento>` : ""}
+      ${p.sex ? `<Sexo>${p.sex}</Sexo>` : ""}
+      <Telefono>${escapeXml(p.phone ?? "")}</Telefono>
+      <Email>${escapeXml(p.email ?? "")}</Email>
+      <Direccion>
+        <Via>${escapeXml(p.addressStreet ?? "")}</Via>
+        <Municipio>${escapeXml(p.addressCity ?? "")}</Municipio>
+        <CodigoPostal>${escapeXml(p.addressPostalCode ?? "")}</CodigoPostal>
+        ${p.addressProvince ? `<Provincia>${escapeXml(p.addressProvince)}</Provincia>` : ""}
+        <Pais>${escapeXml(p.addressCountry ?? "ESP")}</Pais>
+      </Direccion>
+      ${p.relationshipToLead ? `<Parentesco>${escapeXml(p.relationshipToLead)}</Parentesco>` : ""}
+    </Viajero>`;
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!--
@@ -72,37 +116,8 @@ export async function generateTravelerRecordXML(
   </Reserva>
 
   <Viajeros>
-    <Viajero>
-      <!--
-        NOTA: En producción se incluirían TODOS los viajeros mayores de 14 años.
-        Este sistema solo gestiona el titular de la reserva.
-        Los datos adicionales de acompañantes deben recogerse en check-in.
-      -->
-      <Nombre>${escapeXml(guest.firstName)}</Nombre>
-      <Apellido1>${escapeXml(guest.lastName)}</Apellido1>
-      ${guest.secondLastName
-        ? `<Apellido2>${escapeXml(guest.secondLastName)}</Apellido2>`
-        : "<!-- Apellido2: no aportado (opcional) -->"}
-      <TipoDocumento>${documentType}</TipoDocumento>
-      <NumeroDocumento>${escapeXml(guest.documentId)}</NumeroDocumento>
-      ${guest.documentSupportNumber
-        ? `<SoporteDocumento>${escapeXml(guest.documentSupportNumber)}</SoporteDocumento>`
-        : "<!-- SoporteDocumento: no disponible - recoger en check-in (obligatorio para DNI/NIE) -->"}
-      <Nacionalidad>${escapeXml(guest.nationality ?? "ESP")}</Nacionalidad>
-      ${guest.birthDate
-        ? `<FechaNacimiento>${format(guest.birthDate, "yyyy-MM-dd")}</FechaNacimiento>`
-        : "<!-- FechaNacimiento: No disponible - recoger en check-in -->"}
-      ${guest.sex ? `<Sexo>${guest.sex}</Sexo>` : "<!-- Sexo: no disponible - recoger en check-in -->"}
-      <Telefono>${escapeXml(guest.phone ?? "")}</Telefono>
-      <Email>${escapeXml(guest.email)}</Email>
-      <Direccion>
-        <Via>${escapeXml(guest.addressStreet ?? "")}</Via>
-        <Municipio>${escapeXml(guest.addressCity ?? "")}</Municipio>
-        <CodigoPostal>${escapeXml(guest.addressPostalCode ?? "")}</CodigoPostal>
-        ${guest.addressProvince ? `<Provincia>${escapeXml(guest.addressProvince)}</Provincia>` : ""}
-        <Pais>${escapeXml(guest.addressCountry ?? "ESP")}</Pais>
-      </Direccion>
-    </Viajero>
+    ${viajeroXml(guest)}
+    ${travelers.map(viajeroXml).join("\n    ")}
   </Viajeros>
 
 </PartesViajeros>`;

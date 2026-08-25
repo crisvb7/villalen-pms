@@ -30,10 +30,41 @@ interface BookingInfo {
     sex: "H" | "M" | null;
     addressStreet: string | null;
     addressCity: string | null;
+    addressMunicipalityCode: string | null;
     addressPostalCode: string | null;
     addressProvince: string | null;
     addressCountry: string | null;
   };
+}
+
+interface Traveler {
+  id: string;
+  firstName: string;
+  lastName: string;
+  secondLastName: string | null;
+  documentId: string | null;
+  birthDate: string | null;
+  nationality: string | null;
+  sex: "H" | "M" | null;
+  relationshipToLead: string | null;
+}
+
+const EMPTY_TRAVELER_FORM = {
+  firstName: "",
+  lastName: "",
+  secondLastName: "",
+  documentId: "",
+  documentSupportNumber: "",
+  birthDate: "",
+  nationality: "",
+  sex: "" as "" | "H" | "M",
+  relationshipToLead: "",
+};
+
+function isMinorDob(dob: string): boolean {
+  if (!dob) return false;
+  const age = (Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  return age < 18;
 }
 
 const formatDateEs = (d: string) => format(parseISO(d), "d 'de' MMMM 'de' yyyy", { locale: es });
@@ -55,6 +86,7 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
     phone: "",
     addressStreet: "",
     addressCity: "",
+    addressMunicipalityCode: "",
     addressPostalCode: "",
     addressProvince: "",
     addressCountry: "",
@@ -66,6 +98,19 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [travelers, setTravelers] = useState<Traveler[]>([]);
+  const [travelerForm, setTravelerForm] = useState(EMPTY_TRAVELER_FORM);
+  const [addingTraveler, setAddingTraveler] = useState(false);
+  const [savingTraveler, setSavingTraveler] = useState(false);
+  const [travelerError, setTravelerError] = useState("");
+
+  const loadTravelers = () => {
+    fetch(`/api/bookings/${params.id}/travelers`)
+      .then((res) => res.json())
+      .then((data) => setTravelers(data.data ?? []))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     fetch(`/api/bookings/${params.id}/precheckin`)
@@ -88,14 +133,58 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
           phone: b.guest.phone ?? "",
           addressStreet: b.guest.addressStreet ?? "",
           addressCity: b.guest.addressCity ?? "",
+          addressMunicipalityCode: b.guest.addressMunicipalityCode ?? "",
           addressPostalCode: b.guest.addressPostalCode ?? "",
           addressProvince: b.guest.addressProvince ?? "",
           addressCountry: b.guest.addressCountry ?? "ES",
         });
+        loadTravelers();
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
+
+  const handleAddTraveler = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTravelerError("");
+    if (!travelerForm.firstName.trim() || !travelerForm.lastName.trim()) {
+      setTravelerError("Nombre y primer apellido son obligatorios.");
+      return;
+    }
+    const minor = isMinorDob(travelerForm.birthDate);
+    if (minor && !travelerForm.relationshipToLead.trim()) {
+      setTravelerError("Indica el parentesco con el titular para un menor de edad.");
+      return;
+    }
+    if (!minor && !travelerForm.documentId.trim()) {
+      setTravelerError("El documento es obligatorio para un acompañante mayor de edad.");
+      return;
+    }
+    setSavingTraveler(true);
+    try {
+      const res = await fetch(`/api/bookings/${params.id}/travelers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(travelerForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTravelerError(data.error ?? "No se pudo añadir el acompañante.");
+        return;
+      }
+      setTravelers((prev) => [...prev, data.data]);
+      setTravelerForm(EMPTY_TRAVELER_FORM);
+      setAddingTraveler(false);
+    } finally {
+      setSavingTraveler(false);
+    }
+  };
+
+  const handleRemoveTraveler = async (travelerId: string) => {
+    setTravelers((prev) => prev.filter((t) => t.id !== travelerId));
+    await fetch(`/api/bookings/${params.id}/travelers/${travelerId}`, { method: "DELETE" });
+  };
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,6 +226,11 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
     }
     if (!form.sex || !form.addressStreet.trim() || !form.addressCity.trim() || !form.addressPostalCode.trim() || !form.addressCountry.trim()) {
       setError("Sexo y dirección completa son obligatorios para el parte de viajeros.");
+      return;
+    }
+    const isSpain = form.addressCountry.toUpperCase() === "ES" || form.addressCountry.toUpperCase() === "ESP";
+    if (isSpain && !form.addressMunicipalityCode.trim()) {
+      setError("El código INE del municipio es obligatorio para direcciones en España.");
       return;
     }
     setSaving(true);
@@ -373,6 +467,33 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
 
+              {(form.addressCountry.toUpperCase() === "ES" || form.addressCountry.toUpperCase() === "ESP") && (
+                <div className="mb-4">
+                  <label className="label mb-2">Código INE del municipio (5 dígitos) *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.addressMunicipalityCode}
+                    onChange={(e) => setForm({ ...form, addressMunicipalityCode: e.target.value })}
+                    placeholder="Ej. 33053"
+                    maxLength={5}
+                    required
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    Puedes buscarlo en{" "}
+                    <a
+                      href="https://www.ine.es/daco/daco42/codmun/codmunmapa.htm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      el callejero del INE
+                    </a>
+                    .
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="label mb-2">Provincia</label>
@@ -404,6 +525,188 @@ export default function PrecheckinPage({ params }: { params: { id: string } }) {
                 {saving ? "Guardando…" : "Confirmar mis datos"}
               </button>
             </form>
+
+            <div className="card p-6 mt-6">
+              <h3 className="font-serif text-lg text-stone-800 mb-1">Acompañantes</h3>
+              <p className="text-sm text-stone-500 mb-4">
+                La ley exige registrar a todas las personas alojadas, no solo al titular. Añade
+                aquí al resto de huéspedes de tu reserva (adultos y menores).
+              </p>
+
+              {travelers.length > 0 && (
+                <ul className="mb-4 space-y-2">
+                  {travelers.map((t) => (
+                    <li
+                      key={t.id}
+                      className="flex items-center justify-between gap-2 bg-stone-50 border border-stone-200 rounded px-3 py-2 text-sm"
+                    >
+                      <span>
+                        {t.firstName} {t.lastName} {t.secondLastName ?? ""}
+                        {t.documentId ? ` · ${t.documentId}` : ""}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTraveler(t.id)}
+                        className="text-red-600 hover:text-red-800 text-xs"
+                      >
+                        Eliminar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {addingTraveler ? (
+                <form onSubmit={handleAddTraveler} className="border-t border-stone-100 pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="label mb-1">Nombre *</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={travelerForm.firstName}
+                        onChange={(e) => setTravelerForm((f) => ({ ...f, firstName: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="label mb-1">Primer apellido *</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={travelerForm.lastName}
+                        onChange={(e) => setTravelerForm((f) => ({ ...f, lastName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="label mb-1">Segundo apellido</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={travelerForm.secondLastName}
+                        onChange={(e) => setTravelerForm((f) => ({ ...f, secondLastName: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="label mb-1">Fecha de nacimiento</label>
+                      <input
+                        type="date"
+                        className="input"
+                        value={travelerForm.birthDate}
+                        onChange={(e) => setTravelerForm((f) => ({ ...f, birthDate: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  {isMinorDob(travelerForm.birthDate) ? (
+                    <div className="mb-3">
+                      <label className="label mb-1">Parentesco con el titular *</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={travelerForm.relationshipToLead}
+                        onChange={(e) => setTravelerForm((f) => ({ ...f, relationshipToLead: e.target.value }))}
+                        placeholder="Ej. hijo/a, nieto/a…"
+                      />
+                      <p className="text-xs text-stone-400 mt-1">
+                        Obligatorio para menores de edad sin documento propio.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="label mb-1">DNI / NIE / Pasaporte *</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={travelerForm.documentId}
+                          onChange={(e) =>
+                            setTravelerForm((f) => ({ ...f, documentId: e.target.value.toUpperCase() }))
+                          }
+                        />
+                      </div>
+                      {(detectDocumentType(travelerForm.documentId || "X") === "DNI" ||
+                        detectDocumentType(travelerForm.documentId || "X") === "NIE") && (
+                        <div>
+                          <label className="label mb-1">Nº de soporte *</label>
+                          <input
+                            type="text"
+                            className="input"
+                            value={travelerForm.documentSupportNumber}
+                            onChange={(e) =>
+                              setTravelerForm((f) => ({
+                                ...f,
+                                documentSupportNumber: e.target.value.toUpperCase(),
+                              }))
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <label className="label mb-1">Nacionalidad</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={travelerForm.nationality}
+                        onChange={(e) =>
+                          setTravelerForm((f) => ({ ...f, nationality: e.target.value.toUpperCase() }))
+                        }
+                        placeholder="ESP"
+                      />
+                    </div>
+                    <div>
+                      <label className="label mb-1">Sexo</label>
+                      <select
+                        className="input"
+                        value={travelerForm.sex}
+                        onChange={(e) =>
+                          setTravelerForm((f) => ({ ...f, sex: e.target.value as "" | "H" | "M" }))
+                        }
+                      >
+                        <option value="">Selecciona…</option>
+                        <option value="H">Hombre</option>
+                        <option value="M">Mujer</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {travelerError && <p className="text-xs text-red-600 mb-3">{travelerError}</p>}
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddingTraveler(false);
+                        setTravelerError("");
+                      }}
+                      className="btn-ghost text-sm"
+                      disabled={savingTraveler}
+                    >
+                      Cancelar
+                    </button>
+                    <button type="submit" className="btn-primary text-sm" disabled={savingTraveler}>
+                      {savingTraveler ? "Guardando…" : "Añadir acompañante"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTravelerForm(EMPTY_TRAVELER_FORM);
+                    setAddingTraveler(true);
+                  }}
+                  className="btn-secondary w-full"
+                >
+                  + Añadir acompañante
+                </button>
+              )}
+            </div>
           </>
         )}
       </main>

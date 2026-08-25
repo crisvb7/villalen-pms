@@ -68,9 +68,13 @@ model Guest {
   // Dirección de residencia — exigida por el parte de viajeros para todo huésped.
   addressStreet     String?
   addressCity       String? // Municipio
-  addressPostalCode String?
-  addressProvince   String?
-  addressCountry    String? @default("ES")
+  // Código INE del municipio (5 dígitos) — el parte de viajeros exige este
+  // código (no el nombre en texto libre) cuando el país de residencia es
+  // España; ver https://www.ine.es/daco/daco42/codmun/codmunmapa.htm
+  addressMunicipalityCode String?
+  addressPostalCode       String?
+  addressProvince         String?
+  addressCountry          String? @default("ES")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -83,6 +87,47 @@ model Guest {
 enum GuestSex {
   H // Hombre
   M // Mujer
+}
+
+// Acompañantes de la reserva (además del titular, que es el Guest de la
+// reserva) — el parte de viajeros exige reportar a todos los huéspedes
+// mayores de 14 años, no solo al titular. Los datos de documento son
+// opcionales aquí porque solo son obligatorios para mayores de edad; los
+// menores sin documento propio necesitan en cambio `relationshipToLead`
+// (parentesco con el titular).
+model BookingTraveler {
+  id             String    @id @default(cuid())
+  bookingId      String
+  firstName      String
+  lastName       String
+  secondLastName String?
+  documentId     String?
+  documentSupportNumber String?
+  nationality    String?   @default("ES")
+  birthDate      DateTime?
+  sex            GuestSex?
+
+  addressStreet           String?
+  addressCity             String?
+  addressMunicipalityCode String?
+  addressPostalCode       String?
+  addressProvince         String?
+  addressCountry          String? @default("ES")
+
+  phone String?
+  email String?
+
+  // Parentesco con el titular de la reserva — obligatorio en el parte de
+  // viajeros cuando esta persona es menor de edad y no aporta documento
+  // propio (p.ej. "HJ" hijo/a, "CY" cónyuge...).
+  relationshipToLead String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("booking_travelers")
 }
 
 // ─── RESERVAS ─────────────────────────────────────────────────────────────────
@@ -152,6 +197,7 @@ model Booking {
   invoices        Invoice[]
   serviceRequests GuestServiceRequest[]
   messages        GuestMessage[]
+  travelers       BookingTraveler[]
 
   @@map("bookings")
 }

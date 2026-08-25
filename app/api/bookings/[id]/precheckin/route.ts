@@ -51,6 +51,7 @@ export async function PATCH(
       sex: body.sex,
       addressStreet: body.addressStreet,
       addressCity: body.addressCity,
+      addressMunicipalityCode: body.addressMunicipalityCode,
       addressPostalCode: body.addressPostalCode,
       addressProvince: body.addressProvince,
       addressCountry: body.addressCountry,
