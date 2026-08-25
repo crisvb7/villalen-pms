@@ -285,7 +285,7 @@ export default function BookingDetailPage() {
         ← Volver a reservas
       </Link>
 
-      <div className="card">
+      <div className="card p-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="font-serif text-2xl text-stone-800">
             {booking.guest.firstName} {booking.guest.lastName}
@@ -304,7 +304,7 @@ export default function BookingDetailPage() {
         </p>
       </div>
 
-      <section className="card">
+      <section className="card p-6">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
           <h2 className="font-medium text-stone-700">Datos del huésped y verificación policial</h2>
           {!editingGuest && (
@@ -589,7 +589,7 @@ export default function BookingDetailPage() {
         )}
       </section>
 
-      <section className="card">
+      <section className="card p-6">
         <h2 className="font-medium text-stone-700 mb-4">Servicios diarios</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm" style={{ minWidth: 480 }}>
@@ -638,7 +638,7 @@ export default function BookingDetailPage() {
         </div>
       </section>
 
-      <section className="card">
+      <section className="card p-6">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
           <h2 className="font-medium text-stone-700">Chat con el huésped</h2>
           <button
