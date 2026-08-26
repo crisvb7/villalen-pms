@@ -82,6 +82,14 @@ export function isSesConfigured(): boolean {
   return getConfig() !== null;
 }
 
+// No es un dato sensible (a diferencia de las credenciales) — se usa para
+// que el panel de administración pueda mostrar contra qué entorno se está
+// probando antes de disparar una comunicación real.
+export function getSesEnvironment(): "test" | "production" | null {
+  if (!getConfig()) return null;
+  return process.env.SES_ENVIRONMENT === "production" ? "production" : "test";
+}
+
 function escapeXml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
