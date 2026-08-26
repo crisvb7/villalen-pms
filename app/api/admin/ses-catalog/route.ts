@@ -16,11 +16,11 @@ type Tabla = (typeof VALID_TABLAS)[number];
 export async function GET(req: NextRequest) {
   const user = await requireAuth();
   if (!user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    return NextResponse.json({ ok: false, message: "No autorizado.", environment: null }, { status: 401 });
   }
 
   if (!isSesConfigured()) {
-    return NextResponse.json({ error: "SES no está configurado." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "SES no está configurado.", environment: null }, { status: 400 });
   }
 
   const tablaParam = req.nextUrl.searchParams.get("tabla");

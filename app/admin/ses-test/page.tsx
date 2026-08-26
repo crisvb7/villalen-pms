@@ -8,8 +8,9 @@
 
 import { useState } from "react";
 
+// SES exige una tabla concreta — no admite "catálogo completo" sin
+// especificar (probado contra producción: devuelve error de validación).
 const TABLAS = [
-  { value: "", label: "Catálogo completo" },
   { value: "SEXO", label: "SEXO" },
   { value: "TIPO_DOCUMENTO", label: "TIPO_DOCUMENTO" },
   { value: "TIPO_PAGO", label: "TIPO_PAGO" },
@@ -22,11 +23,10 @@ interface CatalogResult {
   message: string;
   environment: "test" | "production" | null;
   entries?: { codigo: string; descripcion: string }[];
-  error?: string;
 }
 
 export default function SesTestPage() {
-  const [tabla, setTabla] = useState("");
+  const [tabla, setTabla] = useState<string>(TABLAS[0].value);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CatalogResult | null>(null);
 
@@ -34,7 +34,7 @@ export default function SesTestPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch(`/api/admin/ses-catalog${tabla ? `?tabla=${tabla}` : ""}`);
+      const res = await fetch(`/api/admin/ses-catalog?tabla=${tabla}`);
       const data = await res.json();
       setResult(data);
     } finally {
@@ -86,7 +86,7 @@ export default function SesTestPage() {
                 </span>
               )}
             </p>
-            <p className="mt-1">{result.ok ? result.message : result.error}</p>
+            <p className="mt-1">{result.message}</p>
 
             {result.entries && result.entries.length > 0 && (
               <table className="mt-3 w-full text-xs">

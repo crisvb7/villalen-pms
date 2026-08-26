@@ -19,15 +19,10 @@
 //     rol "VI" (viajero) — a diferencia de otras comunicaciones (reservas)
 //     donde el titular lleva "TI".
 //
-// ⚠️ Sin verificar todavía (no aparecen en el manual — se obtienen en tiempo
-// de ejecución con la operación `catalogo`, ver `queryCatalog` más abajo):
-//   - Código de tipoDocumento para pasaporte (usamos "PAS" a falta de
-//     confirmación; NIF y NIE sí están confirmados literalmente en el manual).
-//   - Códigos de tipoPago distintos de "EFECT" (el único que aparece en el
-//     ejemplo oficial); TARJ/TRANS/OTRO son mejor esfuerzo.
-// Antes de ir a producción: llamar a `queryCatalog("TIPO_DOCUMENTO")` y
-// `queryCatalog("TIPO_PAGO")` contra el entorno de test con credenciales
-// reales y ajustar `DOCUMENT_TYPE_CODES`/`mapPaymentMethod` si difieren.
+// Códigos de tipoDocumento y tipoPago verificados en 2026-08-26 llamando a
+// `queryCatalog("TIPO_DOCUMENTO"/"TIPO_PAGO")` contra producción con
+// credenciales reales (ver `/admin/ses-test`) — no hacía falta arriesgar un
+// envío real para confirmarlos, esa operación es de solo lectura.
 
 import JSZip from "jszip";
 // OJO: hay que usar el fetch que exporta el propio paquete "undici" (no el
@@ -114,14 +109,14 @@ function sesDocumentType(documentId: string): string {
   return DOCUMENT_TYPE_CODES[detectDocumentType(documentId)];
 }
 
-// Solo "EFECT" (efectivo) está confirmado en el manual (ejemplo oficial).
-// El resto son mejor esfuerzo — confirmar con `queryCatalog("TIPO_PAGO")`.
+// Códigos confirmados contra producción con `queryCatalog("TIPO_PAGO")`:
+// DESTI, EFECT, MOVIL, OTRO, PLATF, TARJT, TRANS, TREG.
 function mapPaymentMethod(paymentMethod: PaymentMethod | null | undefined): string {
   switch (paymentMethod) {
     case "CASH":
       return "EFECT";
     case "CARD":
-      return "TARJ";
+      return "TARJT";
     case "TRANSFER":
       return "TRANS";
     case "OTHER":

@@ -250,15 +250,14 @@ clave de la estructura:
 3. Prueba contra el entorno de test (`pre-ses.mir.es`) antes de pasar a
    `production`.
 
-> ⚠️ Códigos sin verificar todavía (el manual no los incluye — se consultan en
-> tiempo de ejecución con la operación `catalogo`, ver `queryCatalog()` en
-> `ses.service.ts`): el código de tipo de documento para pasaporte (se usa
-> `"PAS"` sin confirmar; `NIF`/`NIE` sí están confirmados en el manual), y los
-> códigos de forma de pago distintos de `"EFECT"` (efectivo, el único que
-> aparece en el ejemplo oficial). Antes de ir a producción, llama a
-> `queryCatalog("TIPO_DOCUMENTO")` y `queryCatalog("TIPO_PAGO")` contra el
-> entorno de test y ajusta `DOCUMENT_TYPE_CODES`/`mapPaymentMethod` si
-> difieren. Además, para direcciones en España el parte exige el **código de
+> ✅ Códigos de tipo de documento y forma de pago verificados el 2026-08-26
+> contra producción con credenciales reales, usando la operación de solo
+> lectura `catalogo` desde `/admin/ses-test` (no hace falta un envío real
+> para confirmarlos). El único ajuste que hizo falta: forma de pago con
+> tarjeta es `"TARJT"`, no `"TARJ"` como se había puesto a falta de
+> confirmación — ya corregido en `mapPaymentMethod`. Si el Ministerio cambia
+> estos catálogos en el futuro, vuelve a comprobarlo desde esa misma página.
+> Además, para direcciones en España el parte exige el **código de
 > municipio del INE** (5 dígitos, no el nombre) — se pide en el formulario de
 > precheckin y en el admin, pero no hay una base de datos de municipios
 > integrada, así que quien lo rellena tiene que buscarlo a mano (enlace al
