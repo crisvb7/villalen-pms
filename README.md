@@ -187,6 +187,38 @@ Sin esas variables configuradas, `/reserva` se comporta exactamente igual que an
 3. Prueba con la tarjeta `4242 4242 4242 4242` (cualquier fecha futura/CVC) para el
    flujo correcto, y `4000 0000 0000 0002` para simular un cobro rechazado.
 
+### 🏦 Migración planeada a Redsys (TPV Virtual de Caja Rural)
+
+Villalén va a sustituir Stripe por el TPV Virtual de Caja Rural (que, como casi todos
+los bancos españoles, funciona sobre **Redsys**). El código de Stripe descrito arriba
+sigue siendo el que está activo — esto es solo la preparación mientras se gestiona el
+alta con el banco.
+
+**Lo que hace falta pedirle a Caja Rural** (ver variables `REDSYS_*` en `.env.example`):
+1. Que el TPV Virtual tenga activada la **tokenización / pago por referencia (COF)** —
+   es lo que permite guardar la tarjeta al reservar y cobrar de verdad más tarde sin
+   que el huésped esté presente, igual que hace Stripe ahora. No es el TPV básico.
+2. Acceso al **entorno de pruebas** (sandbox), con sus propias credenciales de test.
+3. Confirmar si activan **iNSITE** (formulario de tarjeta embebido en `/reserva`, la
+   tarjeta no pasa por nuestro servidor) además de la redirección clásica — es la
+   forma de mantener el mismo nivel de alcance PCI-DSS que tenemos con Stripe Elements.
+
+**Equivalencia técnica** (confirmada contra los manuales oficiales de Redsys — REST,
+iNSITE y redirección):
+- Captura inicial de la tarjeta (CIT) → operación con `DS_MERCHANT_IDENTIFIER: "REQUIRED"`
+  y `DS_MERCHANT_COF_TYPE`, devuelve un identificador — equivalente a
+  `stripeCustomerId`/`stripePaymentMethodId`.
+- Cobro posterior sin el huésped presente (MIT) → se reenvía ese mismo identificador
+  en `DS_MERCHANT_IDENTIFIER` — equivalente al botón "💳 Cobrar ahora" actual.
+- La primera captura puede requerir autenticación 3D Secure/SCA (PSD2) — el cobro
+  posterior normalmente queda exento por ser MIT, pero hay que montar esa pantalla de
+  verificación en el primer paso.
+- Peticiones firmadas con HMAC-SHA512 (clave de comercio) en vez del SDK de Stripe.
+
+Cuando lleguen las credenciales de test, se reescribe `lib/services/stripe.service.ts`
+(o se añade un `lib/services/redsys.service.ts` en paralelo) y el `CardElement` de
+`app/reserva/page.tsx`, probando contra el sandbox antes de tocar producción.
+
 ## 📧 Emails transaccionales (Resend)
 
 Confirmación de reserva (con enlace de precheckin), cancelación y factura con
