@@ -228,13 +228,18 @@ export function InvoiceDocument(props: InvoicePdfProps) {
               </View>
             )}
             <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>CIF</Text>
+              <Text style={styles.infoLabel}>NIF</Text>
               <Text style={styles.infoValue}>{ESTABLISHMENT.cif}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Titular</Text>
+              <Text style={styles.infoValue}>{ESTABLISHMENT.legalName}</Text>
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Dirección</Text>
               <Text style={styles.infoValue}>
-                {ESTABLISHMENT.address}, {ESTABLISHMENT.municipality}, {ESTABLISHMENT.province}
+                {ESTABLISHMENT.address}, {ESTABLISHMENT.postalCode} {ESTABLISHMENT.municipality},{" "}
+                {ESTABLISHMENT.province}
               </Text>
             </View>
           </View>

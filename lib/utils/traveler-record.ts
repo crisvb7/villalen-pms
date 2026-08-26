@@ -99,6 +99,7 @@ export async function generateTravelerRecordXML(
     <Nombre>${escapeXml(ESTABLISHMENT.name)}</Nombre>
     <CIF>${escapeXml(ESTABLISHMENT.cif)}</CIF>
     <Direccion>${escapeXml(ESTABLISHMENT.address)}</Direccion>
+    <CodigoPostal>${escapeXml(ESTABLISHMENT.postalCode)}</CodigoPostal>
     <Municipio>${escapeXml(ESTABLISHMENT.municipality)}</Municipio>
     <Provincia>${escapeXml(ESTABLISHMENT.province)}</Provincia>
     <ComunidadAutonoma>${escapeXml(ESTABLISHMENT.autonomousCommunity)}</ComunidadAutonoma>
