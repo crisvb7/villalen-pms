@@ -86,10 +86,7 @@ function sesDocumentType(documentId: string): string {
 
 // Solo "EFECT" (efectivo) está confirmado en el manual (ejemplo oficial).
 // El resto son mejor esfuerzo — confirmar con `queryCatalog("TIPO_PAGO")`.
-function mapPaymentMethod(
-  paymentMethod: PaymentMethod | null | undefined,
-  hasStripeCard: boolean
-): string {
+function mapPaymentMethod(paymentMethod: PaymentMethod | null | undefined): string {
   switch (paymentMethod) {
     case "CASH":
       return "EFECT";
@@ -100,7 +97,7 @@ function mapPaymentMethod(
     case "OTHER":
       return "OTRO";
     default:
-      return hasStripeCard ? "TARJ" : "EFECT";
+      return "EFECT";
   }
 }
 
@@ -179,7 +176,6 @@ interface BookingForSes {
   guest: PersonInput;
   travelers: PersonInput[];
   invoices: { paymentMethod: PaymentMethod | null }[];
-  stripePaymentMethodId: string | null;
 }
 
 // Fichero XML "solicitud" — se comprime en ZIP y se codifica en Base64 antes
@@ -188,7 +184,6 @@ function buildPartesViajerosXml(booking: BookingForSes, establishmentCode: strin
   const checkInDateTime = `${formatDate(booking.checkInDate, "yyyy-MM-dd")}T${ESTABLISHMENT.checkInTime}:00`;
   const checkOutDateTime = `${formatDate(booking.checkOutDate, "yyyy-MM-dd")}T${ESTABLISHMENT.checkOutTime}:00`;
   const paymentMethod = booking.invoices[0]?.paymentMethod ?? null;
-  const hasStripeCard = Boolean(booking.stripePaymentMethodId);
 
   // Los acompañantes heredan dirección/contacto del titular si no aportaron
   // los suyos propios (habitual: familia viajando junta) — el bloque
@@ -221,7 +216,7 @@ function buildPartesViajerosXml(booking: BookingForSes, establishmentCode: strin
         <numPersonas>${booking.adults + booking.children}</numPersonas>
         <numHabitaciones>1</numHabitaciones>
         <pago>
-          <tipoPago>${mapPaymentMethod(paymentMethod, hasStripeCard)}</tipoPago>
+          <tipoPago>${mapPaymentMethod(paymentMethod)}</tipoPago>
         </pago>
       </contrato>
         ${personas}

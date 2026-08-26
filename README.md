@@ -166,58 +166,39 @@ sesión. Login con email + contraseña (NextAuth, `middleware.ts` protege las ru
    (`admin@casadosouto.es`, contraseña impresa por consola) — no usar en producción.
 3. Inicia sesión en `/admin/login`.
 
-## 💳 TPV Virtual (Stripe)
+## 💳 TPV Virtual (Redsys / Caja Rural) — pendiente de alta
 
-Si configuras `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` y `STRIPE_SECRET_KEY`, el motor de
-reservas (`/reserva`) sustituye el aviso de "transferencia bancaria" por un campo de
-tarjeta (Stripe Elements). La tarjeta **se guarda como garantía, no se cobra en ese
-momento** — la reserva queda `CONFIRMED` directamente. El cobro del importe total lo
-decide el personal desde `/admin/reservas` con el botón **"💳 Cobrar ahora"**, que
-aparece cuando pasa el plazo de cancelación gratuita (aviso visual, `FREE_CANCELLATION_DAYS`
-en `lib/utils.ts`, 7 días por defecto — no dispara nada automáticamente).
+`/reserva` pide **transferencia bancaria** — no hay pasarela de pago online activa
+todavía. La reserva queda `PENDING` hasta que el personal confirme el ingreso a mano.
 
-Sin esas variables configuradas, `/reserva` se comporta exactamente igual que antes
-(transferencia bancaria, reserva `PENDING`).
-
-1. Crea cuenta en [stripe.com](https://stripe.com), copia las claves de **test** de
-   `dashboard.stripe.com/apikeys` a `.env.local`.
-2. Configura un webhook apuntando a `https://tu-dominio.com/api/webhooks/stripe`
-   escuchando `payment_intent.succeeded` y `payment_intent.payment_failed`, y copia su
-   firma a `STRIPE_WEBHOOK_SECRET`.
-3. Prueba con la tarjeta `4242 4242 4242 4242` (cualquier fecha futura/CVC) para el
-   flujo correcto, y `4000 0000 0000 0002` para simular un cobro rechazado.
-
-### 🏦 Migración planeada a Redsys (TPV Virtual de Caja Rural)
-
-Villalén va a sustituir Stripe por el TPV Virtual de Caja Rural (que, como casi todos
-los bancos españoles, funciona sobre **Redsys**). El código de Stripe descrito arriba
-sigue siendo el que está activo — esto es solo la preparación mientras se gestiona el
-alta con el banco.
+Villalén va a incorporar el TPV Virtual de Caja Rural (que, como casi todos los bancos
+españoles, funciona sobre **Redsys**) para poder guardar la tarjeta como garantía al
+reservar online y cobrarla más tarde, igual que hacía antes la integración con Stripe
+(ya retirada del código).
 
 **Lo que hace falta pedirle a Caja Rural** (ver variables `REDSYS_*` en `.env.example`):
 1. Que el TPV Virtual tenga activada la **tokenización / pago por referencia (COF)** —
    es lo que permite guardar la tarjeta al reservar y cobrar de verdad más tarde sin
-   que el huésped esté presente, igual que hace Stripe ahora. No es el TPV básico.
+   que el huésped esté presente. No es el TPV básico.
 2. Acceso al **entorno de pruebas** (sandbox), con sus propias credenciales de test.
 3. Confirmar si activan **iNSITE** (formulario de tarjeta embebido en `/reserva`, la
    tarjeta no pasa por nuestro servidor) además de la redirección clásica — es la
-   forma de mantener el mismo nivel de alcance PCI-DSS que tenemos con Stripe Elements.
+   forma de mantener el alcance de PCI-DSS lo más reducido posible.
 
-**Equivalencia técnica** (confirmada contra los manuales oficiales de Redsys — REST,
-iNSITE y redirección):
+**Cómo funciona** (confirmado contra los manuales oficiales de Redsys — REST, iNSITE
+y redirección):
 - Captura inicial de la tarjeta (CIT) → operación con `DS_MERCHANT_IDENTIFIER: "REQUIRED"`
-  y `DS_MERCHANT_COF_TYPE`, devuelve un identificador — equivalente a
-  `stripeCustomerId`/`stripePaymentMethodId`.
+  y `DS_MERCHANT_COF_TYPE`, devuelve un identificador que representa la tarjeta.
 - Cobro posterior sin el huésped presente (MIT) → se reenvía ese mismo identificador
-  en `DS_MERCHANT_IDENTIFIER` — equivalente al botón "💳 Cobrar ahora" actual.
+  en `DS_MERCHANT_IDENTIFIER` — así se cobra el importe total cuando decida el personal.
 - La primera captura puede requerir autenticación 3D Secure/SCA (PSD2) — el cobro
   posterior normalmente queda exento por ser MIT, pero hay que montar esa pantalla de
   verificación en el primer paso.
-- Peticiones firmadas con HMAC-SHA512 (clave de comercio) en vez del SDK de Stripe.
+- Peticiones firmadas con HMAC-SHA512 usando la clave de comercio.
 
-Cuando lleguen las credenciales de test, se reescribe `lib/services/stripe.service.ts`
-(o se añade un `lib/services/redsys.service.ts` en paralelo) y el `CardElement` de
-`app/reserva/page.tsx`, probando contra el sandbox antes de tocar producción.
+Cuando lleguen las credenciales de test, se implementa `lib/services/redsys.service.ts`
+y el formulario de tarjeta en `app/reserva/page.tsx`, probando contra el sandbox antes
+de tocar producción.
 
 ## 📧 Emails transaccionales (Resend)
 
@@ -300,12 +281,11 @@ mano si tu establecimiento es seleccionado — no es un envío automático.
 > - ❌ Sin campos CVV/CVC
 >
 > Los pagos se gestionan mediante:
-> - **Stripe** (tokenizado): la tarjeta se teclea en un `CardElement` de Stripe.js en
->   el navegador del huésped y viaja directa a Stripe; este servidor solo guarda los
->   IDs que Stripe devuelve (`stripeCustomerId`, `stripePaymentMethodId`,
->   `stripePaymentIntentId`), nunca el número de tarjeta.
-> - **Transferencia bancaria** (instrucciones enviadas por email) o **TPV físico**,
->   cuando Stripe no está configurado.
+> - **Transferencia bancaria** (instrucciones enviadas por email) para las reservas
+>   online, o **TPV físico** en persona al llegar/salir del alojamiento.
+> - Cuando se active el TPV Virtual de Redsys/Caja Rural (ver sección "TPV Virtual"),
+>   la tarjeta se tokeniza igual de fuera de este servidor — solo se guardará el
+>   identificador de referencia que devuelve Redsys, nunca el número de tarjeta.
 
 ---
 
@@ -444,7 +424,7 @@ puntual, no gradual, para el lado de distribución a canales:
    emails...) ya funciona hoy de forma completamente independiente del
    channel manager — no bloquea nada de lo anterior.
 
-Todo lo demás de este README (huéspedes, facturas, Stripe, SES, etc.) no
+Todo lo demás de este README (huéspedes, facturas, TPV, SES, etc.) no
 depende de si Beds24 está o no configurado, así que se puede seguir
 desarrollando y desplegando sin esperar al corte.
 

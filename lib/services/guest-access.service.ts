@@ -169,8 +169,8 @@ export async function recordGuestLogin(bookingId: string): Promise<BookingWithRo
   });
 }
 
-// Forma que ve la app de huéspedes — nunca exponemos guestAccessCodeHash,
-// datos de Stripe, ni nada de la ficha policial/SES.
+// Forma que ve la app de huéspedes — nunca exponemos guestAccessCodeHash
+// ni nada de la ficha policial/SES.
 export function serializeGuestBooking(booking: BookingWithRoom) {
   return {
     id: booking.id,

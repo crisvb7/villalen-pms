@@ -4,20 +4,14 @@
 // El huésped elige un TIPO de habitación (Doble / Apartamento), no una
 // habitación física concreta — el personal asigna la habitación real desde
 // el backoffice antes de la llegada (ver /admin/calendario).
-// Si hay Stripe configurado (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY), el paso 3
-// guarda la tarjeta del huésped (tokenizada) y la reserva queda confirmada
-// al momento. Si no, se mantiene el flujo original de transferencia bancaria.
+// El pago se hace por transferencia bancaria: la reserva queda PENDING hasta
+// que el personal confirme el pago a mano.
 
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { format, parseISO, differenceInDays, isValid } from "date-fns";
 import { es } from "date-fns/locale";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 type RoomTypeKey = "DOUBLE" | "APARTMENT";
 
@@ -121,7 +115,7 @@ interface GuestForm {
   notes: string;
 }
 
-// ── Paso 3: formulario de datos + tokenización de tarjeta ──────────────────
+// ── Paso 3: formulario de datos ─────────────────────────────────────────────
 function BookingFormStep({
   selectedType,
   checkIn,
@@ -139,10 +133,6 @@ function BookingFormStep({
   onBack: () => void;
   onSuccess: (confirmation: BookingConfirmation) => void;
 }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const stripeEnabled = Boolean(publishableKey);
-
   const [guestForm, setGuestForm] = useState<GuestForm>({
     firstName: "",
     lastName: "",
@@ -160,47 +150,6 @@ function BookingFormStep({
     setLoading(true);
 
     try {
-      let stripeCustomerId: string | undefined;
-      let stripePaymentMethodId: string | undefined;
-
-      if (stripeEnabled) {
-        if (!stripe || !elements) {
-          throw new Error("El formulario de pago aún se está cargando. Inténtalo de nuevo.");
-        }
-        const cardElement = elements.getElement(CardElement);
-        if (!cardElement) {
-          throw new Error("No se pudo leer los datos de la tarjeta.");
-        }
-
-        const setupRes = await fetch("/api/payments/setup-intent", { method: "POST" });
-        const setupData = await setupRes.json();
-        if (!setupRes.ok) throw new Error(setupData.error ?? "No se pudo iniciar el pago.");
-
-        const { error: stripeError, setupIntent } = await stripe.confirmCardSetup(
-          setupData.data.clientSecret,
-          {
-            payment_method: {
-              card: cardElement,
-              billing_details: {
-                name: `${guestForm.firstName} ${guestForm.lastName}`.trim(),
-                email: guestForm.email,
-              },
-            },
-          }
-        );
-
-        if (stripeError) throw new Error(stripeError.message ?? "La tarjeta fue rechazada.");
-        if (!setupIntent?.payment_method) {
-          throw new Error("No se pudo guardar la tarjeta.");
-        }
-
-        stripeCustomerId = setupData.data.customerId;
-        stripePaymentMethodId =
-          typeof setupIntent.payment_method === "string"
-            ? setupIntent.payment_method
-            : setupIntent.payment_method.id;
-      }
-
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -211,8 +160,6 @@ function BookingFormStep({
           adults: guests,
           notes: guestForm.notes,
           source: "WEB",
-          stripeCustomerId,
-          stripePaymentMethodId,
           guest: {
             firstName: guestForm.firstName,
             lastName: guestForm.lastName,
@@ -325,11 +272,9 @@ function BookingFormStep({
             onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
             required
           />
-          {!stripeEnabled && (
-            <p className="text-xs text-stone-400 mt-1">
-              Recibirás las instrucciones de pago en este correo.
-            </p>
-          )}
+          <p className="text-xs text-stone-400 mt-1">
+            Recibirás las instrucciones de pago en este correo.
+          </p>
         </div>
 
         <div className="mb-8">
@@ -343,29 +288,15 @@ function BookingFormStep({
           />
         </div>
 
-        {stripeEnabled ? (
-          <div className="mb-6">
-            <label className="label mb-2">Tarjeta (como garantía) *</label>
-            <div className="input py-3">
-              <CardElement options={{ style: { base: { fontSize: "16px" } } }} />
-            </div>
-            <p className="text-xs text-stone-400 mt-2">
-              🔒 No se realiza ningún cargo ahora. Guardamos tu tarjeta como garantía y
-              te cobraremos el importe total más adelante, una vez pase el plazo de
-              cancelación gratuita.
-            </p>
-          </div>
-        ) : (
-          <div className="bg-stone-50 border border-stone-200 p-4 mb-6 text-sm text-stone-500">
-            <p className="font-medium text-stone-700 mb-1">💳 Sin pago ahora</p>
-            <p>
-              Esta reserva quedará como <strong>PENDIENTE</strong>. En breve recibirás
-              un email con los datos para realizar el pago por{" "}
-              <strong>transferencia bancaria</strong>. La reserva se confirmará al
-              recibir el ingreso.
-            </p>
-          </div>
-        )}
+        <div className="bg-stone-50 border border-stone-200 p-4 mb-6 text-sm text-stone-500">
+          <p className="font-medium text-stone-700 mb-1">💳 Sin pago ahora</p>
+          <p>
+            Esta reserva quedará como <strong>PENDIENTE</strong>. En breve recibirás
+            un email con los datos para realizar el pago por{" "}
+            <strong>transferencia bancaria</strong>. La reserva se confirmará al
+            recibir el ingreso.
+          </p>
+        </div>
 
         {error && (
           <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 p-3">
@@ -373,11 +304,7 @@ function BookingFormStep({
           </p>
         )}
 
-        <button
-          type="submit"
-          className="btn-primary w-full"
-          disabled={loading || (stripeEnabled && (!stripe || !elements))}
-        >
+        <button type="submit" className="btn-primary w-full" disabled={loading}>
           {loading ? "Procesando…" : "Confirmar solicitud de reserva →"}
         </button>
       </form>
@@ -589,7 +516,7 @@ function ReservaPageContent() {
 
             <div className="mt-6 text-center">
               <p className="text-xs text-stone-400">
-                🔒 Reserva segura. {publishableKey ? "Pago con tarjeta protegido por Stripe." : "Pago por transferencia bancaria al confirmar."}
+                🔒 Reserva segura. Pago por transferencia bancaria al confirmar.
               </p>
             </div>
           </div>
@@ -688,20 +615,18 @@ function ReservaPageContent() {
         )}
 
         {step === "form" && selectedType && (
-          <Elements stripe={stripePromise}>
-            <BookingFormStep
-              selectedType={selectedType}
-              checkIn={checkIn}
-              checkOut={checkOut}
-              guests={guests}
-              nights={nights}
-              onBack={() => setStep("results")}
-              onSuccess={(data) => {
-                setConfirmation(data);
-                setStep("success");
-              }}
-            />
-          </Elements>
+          <BookingFormStep
+            selectedType={selectedType}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            guests={guests}
+            nights={nights}
+            onBack={() => setStep("results")}
+            onSuccess={(data) => {
+              setConfirmation(data);
+              setStep("success");
+            }}
+          />
         )}
 
         {step === "success" && confirmation && (

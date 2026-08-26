@@ -150,11 +150,6 @@ model Booking {
   externalId String? @unique // ID de la reserva en Beds24 u otro Channel Manager
   channelRef String? // Referencia del canal (p.ej. "Booking.com", "Airbnb")
 
-  // TPV Virtual (Stripe) — solo IDs, nunca datos de tarjeta (ver aviso PCI-DSS arriba)
-  stripeCustomerId      String?
-  stripePaymentMethodId String?
-  stripePaymentIntentId String?
-
   // Precheckin (el huésped completa/corrige sus datos antes de llegar)
   precheckinCompletedAt DateTime?
 

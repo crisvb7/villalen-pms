@@ -47,21 +47,6 @@ export function calculateTotal(
   return parseFloat((basePrice * nights).toFixed(2));
 }
 
-// Días antes del check-in en los que termina la cancelación gratuita.
-// Es solo un aviso visual en el admin (el cobro lo dispara el personal a mano);
-// ajusta este número si vuestra política de cancelación cambia.
-export const FREE_CANCELLATION_DAYS = 7;
-
-export function isPastFreeCancellation(checkInDate: Date | string): boolean {
-  const ci = typeof checkInDate === "string" ? parseISO(checkInDate) : checkInDate;
-  if (!isValid(ci)) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const deadline = new Date(ci);
-  deadline.setDate(deadline.getDate() - FREE_CANCELLATION_DAYS);
-  return !isBefore(today, deadline);
-}
-
 export function isValidDateRange(checkIn: string, checkOut: string): boolean {
   const ci = parseISO(checkIn);
   const co = parseISO(checkOut);

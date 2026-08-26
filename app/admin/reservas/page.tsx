@@ -10,7 +10,6 @@ import {
   STATUS_COLORS,
   SOURCE_LABELS,
   getNights,
-  isPastFreeCancellation,
   getRoomDisplayName,
 } from "@/lib/utils";
 
@@ -24,7 +23,6 @@ interface Booking {
   source: string;
   totalAmount: string;
   depositPaid: boolean;
-  stripePaymentMethodId: string | null;
   adults: number;
   children: number;
   guest: {
@@ -51,8 +49,6 @@ export default function AdminReservasPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
   const [updating, setUpdating] = useState<string | null>(null);
-  const [charging, setCharging] = useState<string | null>(null);
-  const [chargeError, setChargeError] = useState<{ id: string; message: string } | null>(null);
   const [invoicing, setInvoicing] = useState<string | null>(null);
   const [sendingSes, setSendingSes] = useState<string | null>(null);
   const [resendingEmail, setResendingEmail] = useState<string | null>(null);
@@ -103,24 +99,6 @@ export default function AdminReservasPage() {
     if (!confirm("¿Cancelar esta reserva? Esta acción no se puede deshacer."))
       return;
     await handleStatusChange(id, "CANCELLED");
-  };
-
-  const handleCharge = async (id: string, totalAmount: string) => {
-    if (!confirm(`¿Cobrar ${formatCurrency(totalAmount)} a la tarjeta guardada de esta reserva?`))
-      return;
-    setCharging(id);
-    setChargeError(null);
-    try {
-      const res = await fetch(`/api/bookings/${id}/charge`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        setChargeError({ id, message: data.error ?? "Error al cobrar." });
-        return;
-      }
-      await fetchBookings();
-    } finally {
-      setCharging(null);
-    }
   };
 
   const handleResendEmail = async (id: string) => {
@@ -381,14 +359,8 @@ export default function AdminReservasPage() {
                         <p className="font-medium text-stone-800">
                           {formatCurrency(booking.totalAmount)}
                         </p>
-                        {booking.depositPaid ? (
+                        {booking.depositPaid && (
                           <p className="text-xs text-emerald-600">✓ Pagado</p>
-                        ) : (
-                          booking.stripePaymentMethodId &&
-                          !["CANCELLED", "CHECKED_OUT"].includes(booking.status) &&
-                          isPastFreeCancellation(booking.checkInDate) && (
-                            <p className="text-xs text-amber-600">⚠ Plazo cancelación vencido</p>
-                          )
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -443,17 +415,6 @@ export default function AdminReservasPage() {
                                 className="chip bg-stone-700 text-white border-transparent hover:bg-stone-800"
                               >
                                 {sendingSes === booking.id ? "Enviando…" : "📤 Enviar a Policía"}
-                              </button>
-                            )}
-                          {booking.stripePaymentMethodId &&
-                            !booking.depositPaid &&
-                            !["CANCELLED", "CHECKED_OUT"].includes(booking.status) && (
-                              <button
-                                onClick={() => handleCharge(booking.id, booking.totalAmount)}
-                                disabled={charging === booking.id}
-                                className="chip bg-terracotta-600 text-white border-transparent hover:bg-terracotta-700"
-                              >
-                                {charging === booking.id ? "Cobrando…" : "💳 Cobrar ahora"}
                               </button>
                             )}
                           {["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"].includes(booking.status) &&
@@ -516,9 +477,6 @@ export default function AdminReservasPage() {
                             </button>
                           )}
                         </div>
-                        {chargeError?.id === booking.id && (
-                          <p className="text-xs text-red-600 mt-1">{chargeError.message}</p>
-                        )}
                       </td>
                     </tr>
                   );

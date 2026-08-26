@@ -214,7 +214,6 @@ export async function createBooking(input: CreateBookingInput) {
     });
   }
 
-  const hasStripeCard = Boolean(input.stripeCustomerId && input.stripePaymentMethodId);
   const isManualStaffEntry = input.source === BookingSource.MANUAL;
 
   const booking = await prisma.booking.create({
@@ -225,17 +224,12 @@ export async function createBooking(input: CreateBookingInput) {
       checkInDate: checkIn,
       checkOutDate: checkOut,
       totalAmount,
-      status:
-        hasStripeCard || isManualStaffEntry
-          ? BookingStatus.CONFIRMED
-          : BookingStatus.PENDING,
+      status: isManualStaffEntry ? BookingStatus.CONFIRMED : BookingStatus.PENDING,
       source: input.source ?? BookingSource.WEB,
       depositPaid: false,
       adults: input.adults,
       children: input.children ?? 0,
       notes: input.notes,
-      stripeCustomerId: input.stripeCustomerId,
-      stripePaymentMethodId: input.stripePaymentMethodId,
     },
     include: { guest: true, room: true },
   });
@@ -244,7 +238,7 @@ export async function createBooking(input: CreateBookingInput) {
     await pushAvailabilityAndRates(booking.roomId, checkIn, checkOut);
   }
 
-  const isConfirmed = hasStripeCard || isManualStaffEntry;
+  const isConfirmed = isManualStaffEntry;
   await sendEmail({
     to: booking.guest.email,
     subject: isConfirmed ? "Tu reserva está confirmada" : "Hemos recibido tu solicitud de reserva",

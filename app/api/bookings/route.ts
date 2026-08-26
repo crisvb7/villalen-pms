@@ -72,8 +72,6 @@ export async function POST(request: NextRequest) {
       children: body.children ?? 0,
       notes: body.notes,
       source: body.source,
-      stripeCustomerId: body.stripeCustomerId,
-      stripePaymentMethodId: body.stripePaymentMethodId,
       guest: {
         firstName: body.guest.firstName,
         lastName: body.guest.lastName,
