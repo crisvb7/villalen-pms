@@ -57,6 +57,11 @@ const ENDPOINTS = {
   production: "https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion",
 };
 
+// Por debajo del límite de ejecución por defecto de las funciones de Vercel
+// (10s en el plan Hobby) para que seamos nosotros quienes cortemos la
+// petición con un error legible, no la plataforma con un 502 en blanco.
+const SES_TIMEOUT_MS = 8000;
+
 const SOAP_NAMESPACE = "http://www.soap.servicios.hospedajes.mir.es/comunicacion";
 // Namespace del fichero XML interno (la "solicitud"), tal cual aparece en el
 // ejemplo oficial del manual — específico de la operación de alta de partes.
@@ -320,6 +325,10 @@ export async function submitTravelerReport(bookingId: string): Promise<{ ok: boo
     );
     const basicAuth = Buffer.from(`${config.username}:${config.password}`).toString("base64");
 
+    // Sin esto, si el servidor de Interior tarda o se queda colgado, Vercel
+    // mata la función entera al llegar a su límite de ejecución y el
+    // personal solo ve un 502 sin mensaje — con el timeout aquí, lo
+    // capturamos nosotros y devolvemos un error legible.
     const res = await undiciFetch(config.endpoint, {
       method: "POST",
       headers: {
@@ -328,6 +337,7 @@ export async function submitTravelerReport(bookingId: string): Promise<{ ok: boo
       },
       body: envelope,
       dispatcher: sesDispatcher,
+      signal: AbortSignal.timeout(SES_TIMEOUT_MS),
     });
 
     const responseText = await res.text();
@@ -423,6 +433,7 @@ export async function queryCatalog(
       headers: { "Content-Type": "text/xml; charset=utf-8", Authorization: `Basic ${basicAuth}` },
       body: envelope,
       dispatcher: sesDispatcher,
+      signal: AbortSignal.timeout(SES_TIMEOUT_MS),
     });
     const responseText = await res.text();
     if (!res.ok) {
