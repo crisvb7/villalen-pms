@@ -7,7 +7,16 @@ const nextConfig = {
     // @react-pdf/renderer también: si webpack lo empaqueta junto al resto del
     // código de servidor, su reconciler interno rompe con
     // "a.Component is not a constructor" (bug conocido de bundling).
-    serverComponentsExternalPackages: ["@prisma/client", "prisma", "@react-pdf/renderer", "@vercel/blob"],
+    // undici también: usa APIs internas de Node (node:events, streams web...)
+    // que el bundler de webpack no sabe procesar y el build falla con
+    // "Module not found" dentro de undici/lib/web/fetch/*.js.
+    serverComponentsExternalPackages: [
+      "@prisma/client",
+      "prisma",
+      "@react-pdf/renderer",
+      "@vercel/blob",
+      "undici",
+    ],
     serverActions: {
       allowedOrigins: ["localhost:3000"],
     },
