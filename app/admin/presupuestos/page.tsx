@@ -57,7 +57,7 @@ const emptyConvertForm = {
   nationality: "ES",
 };
 
-export default function PresupuestosPage() {
+export default function FacturasProformaPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +121,7 @@ export default function PresupuestosPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error ?? "Error al crear el presupuesto.");
+        alert(data.error ?? "Error al crear la factura proforma.");
         return;
       }
       setForm(emptyForm);
@@ -183,7 +183,7 @@ export default function PresupuestosPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setConvertError(data.error ?? "Error al convertir el presupuesto.");
+        setConvertError(data.error ?? "Error al convertir la factura proforma.");
         return;
       }
       setConvertingId(null);
@@ -197,17 +197,17 @@ export default function PresupuestosPage() {
     <div>
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="font-serif text-3xl text-stone-800">Presupuestos</h1>
-          <p className="text-sm text-stone-500 mt-1">{quotes.length} presupuesto(s)</p>
+          <h1 className="font-serif text-3xl text-stone-800">Facturas proforma</h1>
+          <p className="text-sm text-stone-500 mt-1">{quotes.length} factura(s) proforma</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm">
-          {showForm ? "Cancelar" : "+ Nuevo presupuesto"}
+          {showForm ? "Cancelar" : "+ Nueva factura proforma"}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleCreate} className="card p-6 mb-6">
-          <h3 className="font-serif text-xl text-stone-800 mb-4">Nuevo presupuesto</h3>
+          <h3 className="font-serif text-xl text-stone-800 mb-4">Nueva factura proforma</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
@@ -258,7 +258,7 @@ export default function PresupuestosPage() {
               </select>
             </div>
             <div>
-              <label className="label mb-2">Nombre del alojamiento en el presupuesto *</label>
+              <label className="label mb-2">Nombre del alojamiento en la factura proforma *</label>
               <input
                 type="text"
                 className="input"
@@ -325,16 +325,16 @@ export default function PresupuestosPage() {
           </div>
 
           <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? "Guardando…" : "Crear presupuesto"}
+            {saving ? "Guardando…" : "Crear factura proforma"}
           </button>
         </form>
       )}
 
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-stone-400">Cargando presupuestos…</div>
+          <div className="p-12 text-center text-stone-400">Cargando facturas proforma…</div>
         ) : quotes.length === 0 ? (
-          <div className="p-12 text-center text-stone-400">No hay presupuestos todavía.</div>
+          <div className="p-12 text-center text-stone-400">No hay facturas proforma todavía.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

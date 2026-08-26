@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { colors } from "@/lib/theme";
 
-export default function PresupuestosLayout() {
+export default function FacturasProformaLayout() {
   return (
     <Stack
       screenOptions={{

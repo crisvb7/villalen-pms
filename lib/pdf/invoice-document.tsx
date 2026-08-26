@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
 });
 
 export interface InvoicePdfProps {
-  documentTitle: string; // "FACTURA" o "PRESUPUESTO"
+  documentTitle: string; // "FACTURA" o "FACTURA PROFORMA"
   documentNumber: string;
   issueDate: Date | string;
   validUntil?: Date | string;

@@ -64,7 +64,7 @@ export default function MasScreen() {
       />
       <HubTile
         icon="calculator-outline"
-        label="Presupuestos"
+        label="Facturas proforma"
         description="Cotizaciones para clientes"
         href="/mas/presupuestos"
       />

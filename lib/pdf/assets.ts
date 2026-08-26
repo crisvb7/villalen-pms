@@ -1,5 +1,5 @@
 // lib/pdf/assets.ts
-// Imágenes reales de Villalén embebidas en los PDF (factura/presupuesto).
+// Imágenes reales de Villalén embebidas en los PDF (factura/factura proforma).
 // Se leen una sola vez del disco y se cachean en memoria.
 
 import fs from "fs";

@@ -33,7 +33,7 @@ export default function QuoteDetailScreen() {
       const res = await api.fetchQuote(id);
       setQuote(res.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar el presupuesto.");
+      setError(err instanceof Error ? err.message : "Error al cargar la factura proforma.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export default function QuoteDetailScreen() {
   if (error || !quote) {
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>{error ?? "Presupuesto no encontrado."}</Text>
+        <Text style={styles.error}>{error ?? "Factura proforma no encontrada."}</Text>
       </View>
     );
   }
@@ -83,7 +83,7 @@ export default function QuoteDetailScreen() {
       ]}
     >
       <ScreenHeader
-        eyebrow="Presupuesto"
+        eyebrow="Factura proforma"
         title={quote.quoteNumber}
         right={
           <Badge

@@ -1,5 +1,5 @@
 // lib/establishment.ts
-// Datos del establecimiento, usados en la ficha de viajero, facturas y presupuestos.
+// Datos del establecimiento, usados en la ficha de viajero, facturas y facturas proforma.
 
 export const ESTABLISHMENT = {
   name: process.env.HOTEL_NAME ?? "Villalén",

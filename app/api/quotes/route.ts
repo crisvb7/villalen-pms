@@ -16,7 +16,7 @@ export async function GET() {
     return NextResponse.json({ data: quotes });
   } catch (error) {
     console.error("[GET /api/quotes]", error);
-    return NextResponse.json({ error: "Error al obtener presupuestos." }, { status: 500 });
+    return NextResponse.json({ error: "Error al obtener facturas proforma." }, { status: 500 });
   }
 }
 
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       !body.validUntil
     ) {
       return NextResponse.json(
-        { error: "Faltan campos obligatorios del presupuesto." },
+        { error: "Faltan campos obligatorios de la factura proforma." },
         { status: 400 }
       );
     }
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: quote }, { status: 201 });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Error al crear el presupuesto.";
+    const msg = error instanceof Error ? error.message : "Error al crear la factura proforma.";
     console.error("[POST /api/quotes]", error);
     return NextResponse.json({ error: msg }, { status: 422 });
   }

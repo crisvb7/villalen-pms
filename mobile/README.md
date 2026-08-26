@@ -56,7 +56,7 @@ vía `expo-secure-store`, dura 30 días, y viaja en cada request.
   entrada/salida, cancelar).
 - **Habitaciones** — estado de limpieza con toggle.
 
-Pendiente para más adelante: caja, facturas, gastos, presupuestos,
+Pendiente para más adelante: caja, facturas, gastos,
 estadísticas, gestión de huéspedes/habitaciones (alta/edición) — todas
 pueden seguir el mismo patrón (`lib/api.ts` + una pantalla).
 

@@ -291,7 +291,7 @@ export async function deleteExpense(id: string) {
   return request<{ message: string }>(`/api/expenses/${id}`, { method: "DELETE" });
 }
 
-// ── Presupuestos ─────────────────────────────────────────────────────────
+// ── Facturas proforma ────────────────────────────────────────────────────
 
 export async function fetchQuotes() {
   return request<{ data: Quote[] }>("/api/quotes");

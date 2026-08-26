@@ -1,7 +1,9 @@
 // lib/services/quote.service.ts
-// Capa de servicio para Presupuestos.
-// Un presupuesto es una foto de precio (sin FK a Room, sin bloquear inventario)
-// que se puede convertir en una reserva real cuando el cliente lo acepta.
+// Capa de servicio para Facturas Proforma.
+// Una factura proforma es una foto de precio (sin FK a Room, sin bloquear
+// inventario) que se puede convertir en una reserva real cuando el cliente
+// la acepta. El modelo de datos sigue llamándose "Quote" internamente
+// (Prisma, rutas /api/quotes) — solo cambia el texto que ve el personal.
 
 import { prisma } from "@/lib/prisma";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -12,7 +14,7 @@ import { createBooking } from "@/lib/services/booking.service";
 async function generateQuoteNumber(): Promise<string> {
   const year = new Date().getFullYear();
   const last = await prisma.quote.findFirst({
-    where: { quoteNumber: { startsWith: `PRES-${year}-` } },
+    where: { quoteNumber: { startsWith: `FP-${year}-` } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -21,7 +23,7 @@ async function generateQuoteNumber(): Promise<string> {
     sequence = parseInt(last.quoteNumber.split("-")[2]) + 1;
   }
 
-  return `PRES-${year}-${String(sequence).padStart(4, "0")}`;
+  return `FP-${year}-${String(sequence).padStart(4, "0")}`;
 }
 
 export interface CreateQuoteInput {
@@ -100,14 +102,15 @@ export interface ConvertQuoteInput {
 }
 
 /**
- * Convierte un presupuesto en una reserva real. Reutiliza createBooking()
- * (hereda el anti-overbooking y el sync a Beds24 ya construidos).
+ * Convierte una factura proforma en una reserva real. Reutiliza
+ * createBooking() (hereda el anti-overbooking y el sync a Beds24 ya
+ * construidos).
  */
 export async function convertQuoteToBooking(id: string, input: ConvertQuoteInput) {
   const quote = await prisma.quote.findUnique({ where: { id } });
-  if (!quote) throw new Error("Presupuesto no encontrado.");
+  if (!quote) throw new Error("Factura proforma no encontrada.");
   if (quote.convertedBookingId) {
-    throw new Error("Este presupuesto ya se convirtió en una reserva.");
+    throw new Error("Esta factura proforma ya se convirtió en una reserva.");
   }
 
   const booking = await createBooking({

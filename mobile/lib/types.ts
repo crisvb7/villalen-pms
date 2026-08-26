@@ -125,7 +125,7 @@ export interface Expense {
   notes: string | null;
 }
 
-// ── Presupuestos ─────────────────────────────────────────────────────────
+// ── Facturas proforma ────────────────────────────────────────────────────
 
 export type QuoteStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
 

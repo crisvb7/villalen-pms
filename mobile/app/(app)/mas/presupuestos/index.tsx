@@ -11,7 +11,7 @@ import { formatMoney, formatShortDate } from "@/lib/date";
 import { colors, fonts, quoteStatusLabels, quoteStatusTones } from "@/lib/theme";
 import type { Quote } from "@/lib/types";
 
-export default function PresupuestosScreen() {
+export default function FacturasProformaScreen() {
   const insets = useSafeAreaInsets();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ export default function PresupuestosScreen() {
       const res = await api.fetchQuotes();
       setQuotes(res.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar presupuestos.");
+      setError(err instanceof Error ? err.message : "Error al cargar facturas proforma.");
     } finally {
       setLoading(false);
     }
@@ -52,7 +52,7 @@ export default function PresupuestosScreen() {
         contentContainerStyle={[styles.list, { paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}
         ListHeaderComponent={
           <View style={{ paddingTop: insets.top + 12 }}>
-            <ScreenHeader eyebrow="Gestión" title="Presupuestos" showBack />
+            <ScreenHeader eyebrow="Gestión" title="Facturas proforma" showBack />
           </View>
         }
         renderItem={({ item }) => (
@@ -71,7 +71,7 @@ export default function PresupuestosScreen() {
             <Text style={styles.amount}>{formatMoney(item.total)}</Text>
           </Card>
         )}
-        ListEmptyComponent={<EmptyState icon="calculator-outline" text="No hay presupuestos." />}
+        ListEmptyComponent={<EmptyState icon="calculator-outline" text="No hay facturas proforma." />}
       />
     </View>
   );

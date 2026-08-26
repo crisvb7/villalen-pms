@@ -18,12 +18,12 @@ export async function GET(
   try {
     const quote = await getQuoteById(params.id);
     if (!quote) {
-      return NextResponse.json({ error: "Presupuesto no encontrado." }, { status: 404 });
+      return NextResponse.json({ error: "Factura proforma no encontrada." }, { status: 404 });
     }
     return NextResponse.json({ data: quote });
   } catch (error) {
     console.error("[GET /api/quotes/:id]", error);
-    return NextResponse.json({ error: "Error al obtener el presupuesto." }, { status: 500 });
+    return NextResponse.json({ error: "Error al obtener la factura proforma." }, { status: 500 });
   }
 }
 
@@ -45,7 +45,7 @@ export async function PATCH(
     const quote = await updateQuoteStatus(params.id, body.status as QuoteStatus);
     return NextResponse.json({ data: quote });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Error al actualizar el presupuesto.";
+    const msg = error instanceof Error ? error.message : "Error al actualizar la factura proforma.";
     return NextResponse.json({ error: msg }, { status: 422 });
   }
 }
@@ -61,9 +61,9 @@ export async function DELETE(
 
   try {
     await deleteQuote(params.id);
-    return NextResponse.json({ message: "Presupuesto eliminado correctamente." });
+    return NextResponse.json({ message: "Factura proforma eliminada correctamente." });
   } catch (error) {
     console.error("[DELETE /api/quotes/:id]", error);
-    return NextResponse.json({ error: "Error al eliminar el presupuesto." }, { status: 500 });
+    return NextResponse.json({ error: "Error al eliminar la factura proforma." }, { status: 500 });
   }
 }

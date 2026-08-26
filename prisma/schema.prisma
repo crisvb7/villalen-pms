@@ -416,8 +416,10 @@ enum CashMovementType {
   EXPENSE
 }
 
-// ─── PRESUPUESTOS ─────────────────────────────────────────────────────────────
-// Foto del precio en el momento del presupuesto (sin FK a Room): no reserva
+// ─── FACTURAS PROFORMA ──────────────────────────────────────────────────────
+// El modelo sigue llamándose "Quote" (nombre interno histórico) — el texto
+// que ve el personal es "factura proforma", ver app/admin/presupuestos.
+// Foto del precio en el momento de emitirla (sin FK a Room): no reserva
 // inventario ni se ve afectado si luego cambia el precio o se borra la habitación.
 model Quote {
   id                 String      @id @default(cuid())

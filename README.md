@@ -91,7 +91,7 @@ La aplicación estará disponible en **http://localhost:3000**
 | `/admin/estadisticas` | Gráficos de ingresos, gastos, ocupación y canales |
 | `/admin/calendario` | Vista de calendario mensual de ocupación |
 | `/admin/reservas` | Lista y gestión de todas las reservas |
-| `/admin/presupuestos` | Presupuestos y conversión a reserva |
+| `/admin/presupuestos` | Facturas proforma y conversión a reserva |
 | `/admin/facturas` | Facturación |
 | `/admin/gastos` | Libro de gastos |
 | `/admin/caja` | Arqueo de caja |

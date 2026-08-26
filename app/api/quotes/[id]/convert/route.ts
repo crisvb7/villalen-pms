@@ -1,5 +1,5 @@
 // app/api/quotes/[id]/convert/route.ts
-// Convierte un presupuesto aceptado en una reserva real.
+// Convierte una factura proforma aceptada en una reserva real.
 
 import { NextRequest, NextResponse } from "next/server";
 
@@ -42,7 +42,7 @@ export async function POST(
 
     return NextResponse.json({ data: booking }, { status: 201 });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Error al convertir el presupuesto.";
+    const msg = error instanceof Error ? error.message : "Error al convertir la factura proforma.";
     console.error("[POST /api/quotes/:id/convert]", error);
     return NextResponse.json({ error: msg }, { status: 422 });
   }

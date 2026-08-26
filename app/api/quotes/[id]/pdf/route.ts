@@ -20,12 +20,12 @@ export async function GET(
   try {
     const quote = await getQuoteById(params.id);
     if (!quote) {
-      return NextResponse.json({ error: "Presupuesto no encontrado." }, { status: 404 });
+      return NextResponse.json({ error: "Factura proforma no encontrada." }, { status: 404 });
     }
 
     const buffer = await renderPdfBuffer(
       InvoiceDocument({
-        documentTitle: "PRESUPUESTO",
+        documentTitle: "FACTURA PROFORMA",
         documentNumber: quote.quoteNumber,
         issueDate: quote.createdAt,
         validUntil: quote.validUntil,
