@@ -30,10 +30,27 @@
 // reales y ajustar `DOCUMENT_TYPE_CODES`/`mapPaymentMethod` si difieren.
 
 import JSZip from "jszip";
+// OJO: hay que usar el fetch que exporta el propio paquete "undici" (no el
+// fetch global de Node) — son versiones distintas de undici por debajo, y
+// pasarle un Agent de la versión de npm al fetch global falla con un error
+// interno ("invalid onRequestStart method") por incompatibilidad de tipos.
+import { Agent, fetch as undiciFetch } from "undici";
+import { rootCertificates } from "node:tls";
 import { prisma } from "@/lib/prisma";
 import { ESTABLISHMENT } from "@/lib/establishment";
 import { detectDocumentType, formatDate } from "@/lib/utils";
+import { FNMT_AC_COMPONENTES_INFORMATICOS_PEM } from "@/lib/certs/fnmt-ac-componentes-informaticos";
 import type { GuestSex, PaymentMethod } from "@prisma/client";
+
+// El servidor de SES.HOSPEDAJES no manda su CA intermedia (FNMT "AC
+// Componentes Informáticos") en el handshake TLS — Windows la completa sola
+// (por eso funciona desde un navegador o PowerShell), pero Node.js no, así
+// que sin esto cualquier llamada falla con UNABLE_TO_VERIFY_LEAF_SIGNATURE
+// en un entorno "limpio" como las funciones de Vercel. Se añade esa CA a las
+// raíces normales de Node (no las sustituye) solo para las llamadas a SES.
+const sesDispatcher = new Agent({
+  connect: { ca: [...rootCertificates, FNMT_AC_COMPONENTES_INFORMATICOS_PEM] },
+});
 
 const ENDPOINTS = {
   test: "https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion",
@@ -303,13 +320,14 @@ export async function submitTravelerReport(bookingId: string): Promise<{ ok: boo
     );
     const basicAuth = Buffer.from(`${config.username}:${config.password}`).toString("base64");
 
-    const res = await fetch(config.endpoint, {
+    const res = await undiciFetch(config.endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "text/xml; charset=utf-8",
         Authorization: `Basic ${basicAuth}`,
       },
       body: envelope,
+      dispatcher: sesDispatcher,
     });
 
     const responseText = await res.text();
@@ -400,10 +418,11 @@ export async function queryCatalog(
   const basicAuth = Buffer.from(`${config.username}:${config.password}`).toString("base64");
 
   try {
-    const res = await fetch(config.endpoint, {
+    const res = await undiciFetch(config.endpoint, {
       method: "POST",
       headers: { "Content-Type": "text/xml; charset=utf-8", Authorization: `Basic ${basicAuth}` },
       body: envelope,
+      dispatcher: sesDispatcher,
     });
     const responseText = await res.text();
     if (!res.ok) {
