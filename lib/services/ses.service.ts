@@ -342,13 +342,30 @@ export async function submitTravelerReport(bookingId: string): Promise<{ ok: boo
       message: `Comunicado a SES.HOSPEDAJES correctamente${lote ? ` (lote ${lote})` : ""}.`,
     };
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Error desconocido.";
+    const msg = describeNetworkError(error);
+    console.error("[submitTravelerReport] Error de red al llamar a SES:", error);
     await prisma.booking.update({
       where: { id: bookingId },
       data: { sesSubmissionError: msg },
     });
     return { ok: false, message: `No se pudo conectar con SES: ${msg}` };
   }
+}
+
+// fetch() envuelve cualquier fallo de red (DNS, TLS, timeout, conexión
+// rechazada...) en un TypeError genérico "fetch failed" — el motivo real
+// vive en `error.cause`, que si no se muestra deja el mensaje inservible
+// para diagnosticar (típicamente solo visible en los logs de Vercel, no en
+// la respuesta que ve el personal).
+function describeNetworkError(error: unknown): string {
+  if (!(error instanceof Error)) return "Error desconocido.";
+  const cause = (error as Error & { cause?: unknown }).cause;
+  if (cause instanceof Error) {
+    const code = (cause as NodeJS.ErrnoException).code;
+    return `${error.message} — ${cause.message}${code ? ` (${code})` : ""}`;
+  }
+  if (cause) return `${error.message} — ${String(cause)}`;
+  return error.message;
 }
 
 /**
@@ -401,7 +418,7 @@ export async function queryCatalog(
     }
     return { ok: true, message: "ok", entries };
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Error desconocido.";
-    return { ok: false, message: `No se pudo conectar con SES: ${msg}` };
+    console.error("[queryCatalog] Error de red al llamar a SES:", error);
+    return { ok: false, message: `No se pudo conectar con SES: ${describeNetworkError(error)}` };
   }
 }
