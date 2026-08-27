@@ -32,14 +32,26 @@ export interface Room {
   imageUrl: string | null;
 }
 
+export type GuestSex = "H" | "M";
+
 export interface Guest {
   id: string;
   firstName: string;
   lastName: string;
+  secondLastName: string | null;
   documentId: string;
+  documentSupportNumber: string | null;
   email: string;
   phone: string | null;
   nationality: string | null;
+  birthDate: string | null;
+  sex: GuestSex | null;
+  addressStreet: string | null;
+  addressCity: string | null;
+  addressMunicipalityCode: string | null;
+  addressPostalCode: string | null;
+  addressProvince: string | null;
+  addressCountry: string | null;
 }
 
 export interface Booking {
@@ -62,6 +74,33 @@ export interface Booking {
   guestDisplayName: string | null;
   guestAccessCodePlain: string | null;
   guestChatClearedAt: string | null;
+  precheckinCompletedAt: string | null;
+  sesSubmittedAt: string | null;
+  sesSubmissionError: string | null;
+}
+
+// Acompañantes de la reserva (parte de viajeros — SES exige reportar a
+// todos los huéspedes, no solo al titular). Ver BookingTraveler en
+// prisma/schema.prisma.
+export interface BookingTraveler {
+  id: string;
+  firstName: string;
+  lastName: string;
+  secondLastName: string | null;
+  documentId: string | null;
+  documentSupportNumber: string | null;
+  nationality: string | null;
+  birthDate: string | null;
+  sex: GuestSex | null;
+  addressStreet: string | null;
+  addressCity: string | null;
+  addressMunicipalityCode: string | null;
+  addressPostalCode: string | null;
+  addressProvince: string | null;
+  addressCountry: string | null;
+  phone: string | null;
+  email: string | null;
+  relationshipToLead: string | null;
 }
 
 export interface CleaningRoom {

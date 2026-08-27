@@ -53,7 +53,9 @@ vía `expo-secure-store`, dura 30 días, y viaja en cada request.
 
 - **Hoy** — entradas/salidas del día, resumen de limpieza.
 - **Reservas** — lista filtrable por estado + detalle (confirmar, marcar
-  entrada/salida, cancelar).
+  entrada/salida, cancelar; datos del huésped y acompañantes para la Ficha
+  Policial, con edición y envío a SES.HOSPEDAJES — mismo alcance que el
+  admin web).
 - **Habitaciones** — estado de limpieza con toggle.
 
 Pendiente para más adelante: caja, facturas, gastos,

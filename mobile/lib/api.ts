@@ -9,6 +9,7 @@ import { getStoredToken } from "@/lib/storage";
 import type {
   Booking,
   BookingStatus,
+  BookingTraveler,
   CashMovementType,
   CashSession,
   CleaningRoom,
@@ -16,6 +17,7 @@ import type {
   GuestMessageItem,
   GuestServiceRequestItem,
   GuestServiceType,
+  GuestSex,
   Invoice,
   MobileUser,
   PaymentMethod,
@@ -374,6 +376,81 @@ export async function fetchTodayServicesBoard(date: string) {
 
 export async function fetchUnreadCounts() {
   return request<{ data: Record<string, number> }>("/api/bookings/unread-counts");
+}
+
+// ── Ficha Policial (SES.HOSPEDAJES) ─────────────────────────────────────
+
+export interface UpdateGuestInput {
+  firstName: string;
+  lastName: string;
+  secondLastName?: string;
+  documentId: string;
+  documentSupportNumber?: string;
+  phone?: string;
+  nationality?: string;
+  birthDate?: string;
+  sex?: GuestSex | "";
+  addressStreet?: string;
+  addressCity?: string;
+  addressMunicipalityCode?: string;
+  addressPostalCode?: string;
+  addressProvince?: string;
+  addressCountry?: string;
+}
+
+// Mismo endpoint que usa el propio huésped en /precheckin — público (el id
+// de reserva hace de capacidad de acceso), no necesita cabecera de auth.
+export async function updateGuestPrecheckin(bookingId: string, input: UpdateGuestInput) {
+  return request<{ data: Booking }>(`/api/bookings/${bookingId}/precheckin`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchBookingTravelers(bookingId: string) {
+  return request<{ data: BookingTraveler[] }>(`/api/bookings/${bookingId}/travelers`);
+}
+
+export interface AddTravelerInput {
+  firstName: string;
+  lastName: string;
+  secondLastName?: string;
+  documentId?: string;
+  documentSupportNumber?: string;
+  birthDate?: string;
+  nationality?: string;
+  sex?: GuestSex | "";
+  relationshipToLead?: string;
+  addressStreet?: string;
+  addressCity?: string;
+  addressMunicipalityCode?: string;
+  addressPostalCode?: string;
+  addressProvince?: string;
+  addressCountry?: string;
+  phone?: string;
+  email?: string;
+}
+
+export async function addBookingTraveler(bookingId: string, input: AddTravelerInput) {
+  return request<{ data: BookingTraveler }>(`/api/bookings/${bookingId}/travelers`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function removeBookingTraveler(bookingId: string, travelerId: string) {
+  return request<{ message: string }>(`/api/bookings/${bookingId}/travelers/${travelerId}`, {
+    method: "DELETE",
+  });
+}
+
+// Envío real (disparado a mano) de la Ficha Policial a SES.HOSPEDAJES — ver
+// app/api/bookings/[id]/ses-submit/route.ts. No es reversible: una vez
+// enviado, el parte ya está comunicado al Ministerio del Interior.
+export async function submitBookingToSes(bookingId: string) {
+  return request<{ message: string }>(`/api/bookings/${bookingId}/ses-submit`, {
+    method: "POST",
+  });
 }
 
 // ── Ajustes del hotel ──────────────────────────────────────────────────────
