@@ -28,6 +28,8 @@ export async function POST(
     const invoice = await addInvoiceExtra(params.id, {
       description: body.description,
       amount: Number(body.amount),
+      quantity: body.quantity !== undefined ? Number(body.quantity) : undefined,
+      date: body.date || undefined,
     });
 
     return NextResponse.json({ data: invoice }, { status: 201 });

@@ -7,7 +7,7 @@ import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { formatLongDate, formatMoney } from "@/lib/date";
+import { formatLongDate, formatMoney, formatShortDate } from "@/lib/date";
 import { colors } from "@/lib/theme";
 import type { Invoice } from "@/lib/types";
 
@@ -93,9 +93,16 @@ export default function InvoiceDetailScreen() {
       {invoice.extras.length > 0 ? (
         <Card>
           <Text style={styles.sectionTitle}>Extras</Text>
-          {invoice.extras.map((extra) => (
-            <Row key={extra.id} label={extra.description} value={formatMoney(extra.amount)} />
-          ))}
+          {invoice.extras.map((extra) => {
+            const label = [
+              extra.description,
+              extra.quantity > 1 ? `×${extra.quantity}` : null,
+              extra.date ? formatShortDate(extra.date) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            return <Row key={extra.id} label={label} value={formatMoney(extra.amount)} />;
+          })}
         </Card>
       ) : null}
 

@@ -4,6 +4,7 @@
   "framework": "nextjs",
   "crons": [
     { "path": "/api/cron/beds24-sync", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/charge-guarantees", "schedule": "0 5 * * *" },
     { "path": "/api/cron/guest-access-rotate", "schedule": "0 6 * * *" }
   ]
 }

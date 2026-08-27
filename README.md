@@ -196,9 +196,26 @@ y redirección):
   verificación en el primer paso.
 - Peticiones firmadas con HMAC-SHA512 usando la clave de comercio.
 
-Cuando lleguen las credenciales de test, se implementa `lib/services/redsys.service.ts`
-y el formulario de tarjeta en `app/reserva/page.tsx`, probando contra el sandbox antes
-de tocar producción.
+**Lo que ya está construido, listo para conectar** (todo lo que rodea al cobro, salvo
+la llamada REST real a Redsys):
+- `Booking.cardGuaranteeToken` / `cardChargedAt` / `cardChargeError` en el schema —
+  igual que `sesSubmittedAt`/`sesSubmissionError` para la Ficha Policial.
+- `lib/services/redsys.service.ts`: `chargeGuaranteedCard()` (cobro de una reserva) y
+  `chargeDueGuarantees()` (cobro automático en lote). Mientras no haya credenciales
+  `REDSYS_*`, o mientras no se implemente la llamada real (marcada con `TODO` en el
+  archivo), devuelve siempre un error legible — nunca finge que ha cobrado.
+- Botón **"💳 Cobrar reserva"** en `/admin/reservas`, junto a "Enviar a Policía" y
+  "Facturar" — cobro manual, con confirmación explícita (no es reversible).
+- Cron diario `/api/cron/charge-guarantees` (`vercel.json`, 05:00): red de seguridad
+  que cobra automáticamente las reservas cuya fecha de entrada ya llegó y que nadie
+  cobró a mano antes — "el día de la reserva como muy tarde". Mismo patrón que el cron
+  de `guest-access-rotate`.
+
+Lo único que falta de verdad: cuando lleguen las credenciales de test, implementar la
+llamada REST real dentro de `chargeGuaranteedCard()` (ver el `TODO` en el archivo) y el
+formulario de tarjeta (captura CIT) en `app/reserva/page.tsx` que rellena
+`cardGuaranteeToken`. En cuanto eso exista, el botón y el cron ya funcionan sin tocar
+nada más. Probar contra el sandbox antes de tocar producción.
 
 ## 📧 Emails transaccionales (Resend)
 

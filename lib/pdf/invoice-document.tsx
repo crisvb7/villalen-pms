@@ -104,6 +104,7 @@ const styles = StyleSheet.create({
   colDesc: { flex: 2.4 },
   colDate: { flex: 1.5, textAlign: "center" },
   colNights: { flex: 0.8, textAlign: "center" },
+  colQty: { flex: 0.8, textAlign: "center" },
   colRate: { flex: 1.1, textAlign: "right" },
   colAmount: { flex: 1.1, textAlign: "right", fontFamily: "Helvetica-Bold" },
 
@@ -166,7 +167,7 @@ export interface InvoicePdfProps {
   accommodationTotal?: number | string; // si falta, se asume que el total es solo alojamiento
   checkInDate: Date | string;
   checkOutDate: Date | string;
-  extras?: { description: string; amount: number | string; date: Date | string }[];
+  extras?: { description: string; amount: number | string; quantity?: number; date: Date | string }[];
   isPaid?: boolean;
   paymentMethod?: string; // CASH | CARD | TRANSFER | OTHER
   heroImage?: Buffer;
@@ -298,12 +299,14 @@ export function InvoiceDocument(props: InvoicePdfProps) {
               <View style={styles.tableHeader}>
                 <Text style={[styles.th, styles.colDesc]}>Descripción</Text>
                 <Text style={[styles.th, styles.colDate]}>Fecha</Text>
+                <Text style={[styles.th, styles.colQty]}>Cant.</Text>
                 <Text style={[styles.th, styles.colAmount]}>Importe</Text>
               </View>
               {extras.map((extra, i) => (
                 <View style={styles.tableRow} key={i}>
                   <Text style={styles.colDesc}>{extra.description}</Text>
                   <Text style={styles.colDate}>{formatDate(extra.date)}</Text>
+                  <Text style={styles.colQty}>{extra.quantity ?? 1}</Text>
                   <Text style={styles.colAmount}>{formatCurrency(extra.amount)}</Text>
                 </View>
               ))}

@@ -8,6 +8,8 @@ interface InvoiceExtra {
   id: string;
   description: string;
   amount: string;
+  quantity: number;
+  date: string | null;
 }
 
 interface Invoice {
@@ -34,7 +36,7 @@ export default function FacturasPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [extraForm, setExtraForm] = useState({ description: "", amount: "" });
+  const [extraForm, setExtraForm] = useState({ description: "", unitAmount: "", quantity: "1", date: "" });
   const [savingExtra, setSavingExtra] = useState(false);
   const [extraError, setExtraError] = useState<string | null>(null);
   const [paymentSelection, setPaymentSelection] = useState<Record<string, string>>({});
@@ -70,15 +72,20 @@ export default function FacturasPage() {
 
   const toggleExpanded = (id: string) => {
     setExtraError(null);
-    setExtraForm({ description: "", amount: "" });
+    setExtraForm({ description: "", unitAmount: "", quantity: "1", date: "" });
     setExpanded(expanded === id ? null : id);
   };
 
   const handleAddExtra = async (invoiceId: string) => {
     setExtraError(null);
-    const amount = Number(extraForm.amount);
-    if (!extraForm.description.trim() || !(amount > 0)) {
-      setExtraError("Indica una descripción y un importe mayor que 0.");
+    const unitAmount = Number(extraForm.unitAmount);
+    const quantity = Number(extraForm.quantity);
+    if (!extraForm.description.trim() || !(unitAmount > 0)) {
+      setExtraError("Indica una descripción y un precio unitario mayor que 0.");
+      return;
+    }
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setExtraError("La cantidad debe ser un número entero de al menos 1.");
       return;
     }
     setSavingExtra(true);
@@ -86,14 +93,19 @@ export default function FacturasPage() {
       const res = await fetch(`/api/invoices/${invoiceId}/extras`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: extraForm.description.trim(), amount }),
+        body: JSON.stringify({
+          description: extraForm.description.trim(),
+          amount: unitAmount * quantity,
+          quantity,
+          date: extraForm.date || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         setExtraError(data.error ?? "Error al añadir el servicio.");
         return;
       }
-      setExtraForm({ description: "", amount: "" });
+      setExtraForm({ description: "", unitAmount: "", quantity: "1", date: "" });
       await fetchInvoices();
     } finally {
       setSavingExtra(false);
@@ -231,7 +243,15 @@ export default function FacturasPage() {
                                 key={extra.id}
                                 className="flex items-center justify-between text-sm bg-white border border-stone-100 rounded-lg px-3 py-1.5 max-w-md"
                               >
-                                <span className="text-stone-700">{extra.description}</span>
+                                <span className="text-stone-700">
+                                  {extra.description}
+                                  {extra.quantity > 1 && (
+                                    <span className="text-stone-400"> ×{extra.quantity}</span>
+                                  )}
+                                  {extra.date && (
+                                    <span className="text-stone-400"> · {formatDate(extra.date)}</span>
+                                  )}
+                                </span>
                                 <div className="flex items-center gap-3">
                                   <span className="font-medium text-stone-800">
                                     {formatCurrency(extra.amount)}
@@ -257,8 +277,8 @@ export default function FacturasPage() {
                             Esta factura ya está pagada; no se pueden modificar sus servicios.
                           </p>
                         ) : (
-                          <div className="flex items-end gap-2 max-w-md">
-                            <div className="flex-1">
+                          <div className="flex flex-wrap items-end gap-2 max-w-2xl">
+                            <div className="flex-1 min-w-[160px]">
                               <label className="block text-xs text-stone-400 mb-1">Descripción</label>
                               <input
                                 type="text"
@@ -270,14 +290,38 @@ export default function FacturasPage() {
                                 className="input w-full text-sm"
                               />
                             </div>
-                            <div className="w-28">
-                              <label className="block text-xs text-stone-400 mb-1">Importe €</label>
+                            <div className="w-24">
+                              <label className="block text-xs text-stone-400 mb-1">Precio unidad €</label>
                               <input
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                value={extraForm.amount}
-                                onChange={(e) => setExtraForm((f) => ({ ...f, amount: e.target.value }))}
+                                value={extraForm.unitAmount}
+                                onChange={(e) =>
+                                  setExtraForm((f) => ({ ...f, unitAmount: e.target.value }))
+                                }
+                                className="input w-full text-sm"
+                              />
+                            </div>
+                            <div className="w-20">
+                              <label className="block text-xs text-stone-400 mb-1">Cantidad</label>
+                              <input
+                                type="number"
+                                step="1"
+                                min="1"
+                                value={extraForm.quantity}
+                                onChange={(e) =>
+                                  setExtraForm((f) => ({ ...f, quantity: e.target.value }))
+                                }
+                                className="input w-full text-sm"
+                              />
+                            </div>
+                            <div className="w-36">
+                              <label className="block text-xs text-stone-400 mb-1">Fecha (opcional)</label>
+                              <input
+                                type="date"
+                                value={extraForm.date}
+                                onChange={(e) => setExtraForm((f) => ({ ...f, date: e.target.value }))}
                                 className="input w-full text-sm"
                               />
                             </div>

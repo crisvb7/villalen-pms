@@ -193,6 +193,8 @@ export interface InvoiceExtra {
   id: string;
   description: string;
   amount: string;
+  quantity: number;
+  date: string | null;
 }
 
 export interface Invoice {

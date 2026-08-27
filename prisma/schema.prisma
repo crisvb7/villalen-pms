@@ -157,6 +157,16 @@ model Booking {
   sesSubmittedAt     DateTime?
   sesSubmissionError String?
 
+  // Garantía de tarjeta / TPV Virtual (Redsys) — ver lib/services/redsys.service.ts.
+  // cardGuaranteeToken lo rellenará /reserva al capturar la tarjeta (CIT) en
+  // cuanto exista esa integración; mientras tanto se queda vacío y ni el
+  // botón "Cobrar reserva" ni el cron de cobro automático tienen nada que
+  // cobrar. El cobro real (MIT) usa ese identificador, nunca el número de
+  // tarjeta — aquí no se guarda ningún dato de tarjeta.
+  cardGuaranteeToken String?
+  cardChargedAt      DateTime?
+  cardChargeError    String?
+
   // App de huéspedes — acceso mediante código generado por el personal (web o
   // app de staff), sin registro. El código se guarda hasheado; nunca en claro.
   guestAccessCodeHash  String?
@@ -340,10 +350,12 @@ model Invoice {
 
 // Servicios adicionales facturados junto al alojamiento (desayuno, etc.).
 model InvoiceExtra {
-  id          String  @id @default(cuid())
+  id          String    @id @default(cuid())
   invoiceId   String
   description String
-  amount      Decimal @db.Decimal(10, 2) // Importe con IVA incluido, igual que el total de la reserva
+  amount      Decimal   @db.Decimal(10, 2) // Importe TOTAL de la línea (con IVA incluido, ya multiplicado por quantity)
+  quantity    Int       @default(1)
+  date        DateTime? @db.Date // Día del servicio (p.ej. qué día fue ese desayuno) — opcional, no todos los extras son de un día concreto
 
   createdAt DateTime @default(now())
 

@@ -42,6 +42,9 @@ interface Booking {
   guestAccessCodeSetAt: string | null;
   guestDisplayName: string | null;
   guestAccessCodePlain: string | null;
+  cardGuaranteeToken: string | null;
+  cardChargedAt: string | null;
+  cardChargeError: string | null;
 }
 
 export default function AdminReservasPage() {
@@ -51,6 +54,7 @@ export default function AdminReservasPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [invoicing, setInvoicing] = useState<string | null>(null);
   const [sendingSes, setSendingSes] = useState<string | null>(null);
+  const [chargingCard, setChargingCard] = useState<string | null>(null);
   const [resendingEmail, setResendingEmail] = useState<string | null>(null);
   const [generatingGuestAccess, setGeneratingGuestAccess] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
@@ -158,6 +162,20 @@ export default function AdminReservasPage() {
       await fetchBookings();
     } finally {
       setSendingSes(null);
+    }
+  };
+
+  const handleChargeCard = async (id: string) => {
+    if (!confirm("Esto cobra de verdad el importe de la reserva en la tarjeta de garantía guardada. ¿Continuar?"))
+      return;
+    setChargingCard(id);
+    try {
+      const res = await fetch(`/api/bookings/${id}/charge-guarantee`, { method: "POST" });
+      const data = await res.json();
+      alert(res.ok ? data.message : data.error);
+      await fetchBookings();
+    } finally {
+      setChargingCard(null);
     }
   };
 
@@ -362,6 +380,14 @@ export default function AdminReservasPage() {
                         {booking.depositPaid && (
                           <p className="text-xs text-emerald-600">✓ Pagado</p>
                         )}
+                        {booking.cardGuaranteeToken && !booking.cardChargedAt && (
+                          <p
+                            className={`text-xs ${booking.cardChargeError ? "text-red-600" : "text-stone-400"}`}
+                            title={booking.cardChargeError ?? undefined}
+                          >
+                            {booking.cardChargeError ? "⚠ Error al cobrar" : "💳 Garantía sin cobrar"}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -415,6 +441,17 @@ export default function AdminReservasPage() {
                                 className="chip bg-stone-700 text-white border-transparent hover:bg-stone-800"
                               >
                                 {sendingSes === booking.id ? "Enviando…" : "📤 Enviar a Policía"}
+                              </button>
+                            )}
+                          {booking.cardGuaranteeToken &&
+                            !booking.cardChargedAt &&
+                            !["CANCELLED"].includes(booking.status) && (
+                              <button
+                                onClick={() => handleChargeCard(booking.id)}
+                                disabled={chargingCard === booking.id}
+                                className="chip bg-emerald-700 text-white border-transparent hover:bg-emerald-800"
+                              >
+                                {chargingCard === booking.id ? "Cobrando…" : "💳 Cobrar reserva"}
                               </button>
                             )}
                           {["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"].includes(booking.status) &&

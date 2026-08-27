@@ -136,7 +136,7 @@ async function recalculateInvoiceTotals(invoiceId: string) {
 
 export async function addInvoiceExtra(
   invoiceId: string,
-  input: { description: string; amount: number }
+  input: { description: string; amount: number; quantity?: number; date?: string }
 ) {
   const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
   if (!invoice) throw new Error("Factura no encontrada.");
@@ -146,9 +146,19 @@ export async function addInvoiceExtra(
   if (!input.description.trim() || !(input.amount > 0)) {
     throw new Error("El servicio necesita una descripción y un importe mayor que 0.");
   }
+  const quantity = input.quantity ?? 1;
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    throw new Error("La cantidad debe ser un número entero de al menos 1.");
+  }
 
   await prisma.invoiceExtra.create({
-    data: { invoiceId, description: input.description.trim(), amount: input.amount },
+    data: {
+      invoiceId,
+      description: input.description.trim(),
+      amount: input.amount,
+      quantity,
+      date: input.date ? new Date(input.date) : undefined,
+    },
   });
 
   return recalculateInvoiceTotals(invoiceId);
@@ -209,7 +219,8 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
       extras: invoice.extras.map((e) => ({
         description: e.description,
         amount: e.amount.toString(),
-        date: e.createdAt,
+        quantity: e.quantity,
+        date: e.date ?? e.createdAt,
       })),
       isPaid: invoice.isPaid,
       paymentMethod: invoice.paymentMethod ?? undefined,
