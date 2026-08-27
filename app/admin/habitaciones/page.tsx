@@ -1,7 +1,7 @@
 // app/admin/habitaciones/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import { formatCurrency, cn } from "@/lib/utils";
 
 interface Room {
@@ -13,6 +13,7 @@ interface Room {
   type: string;
   isClean: boolean;
   amenities: string[];
+  imageUrl: string | null;
   beds24RoomId: string | null;
 }
 
@@ -33,6 +34,10 @@ export default function HabitacionesPage() {
   const [channelForm, setChannelForm] = useState({ beds24RoomId: "" });
   const [channelSaving, setChannelSaving] = useState(false);
   const [channelMessage, setChannelMessage] = useState<string | null>(null);
+  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const photoTargetId = useRef<string | null>(null);
 
   useEffect(() => {
     fetchRooms();
@@ -133,6 +138,44 @@ export default function HabitacionesPage() {
     await fetchRooms();
   };
 
+  const handlePhotoButtonClick = (id: string) => {
+    photoTargetId.current = id;
+    photoInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const roomId = photoTargetId.current;
+    e.target.value = ""; // permite re-seleccionar el mismo archivo si falla
+    if (!file || !roomId) return;
+
+    setUploadingPhotoId(roomId);
+    setPhotoError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const uploadRes = await fetch("/api/rooms/upload", { method: "POST", body });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) {
+        setPhotoError(uploadData.error ?? "No se pudo subir la imagen.");
+        return;
+      }
+      const patchRes = await fetch(`/api/rooms/${roomId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: uploadData.data.url }),
+      });
+      const patchData = await patchRes.json();
+      if (!patchRes.ok) {
+        setPhotoError(patchData.error ?? "No se pudo guardar la foto.");
+        return;
+      }
+      await fetchRooms();
+    } finally {
+      setUploadingPhotoId(null);
+    }
+  };
+
   return (
     <div>
       <div className="mb-6 flex items-start justify-between">
@@ -149,6 +192,15 @@ export default function HabitacionesPage() {
           {showForm ? "Cancelar" : "+ Añadir habitación"}
         </button>
       </div>
+
+      <input
+        type="file"
+        ref={photoInputRef}
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handlePhotoChange}
+        className="hidden"
+      />
+      {photoError && <p className="text-sm text-red-600 mb-4">{photoError}</p>}
 
       {/* Formulario nueva habitación */}
       {showForm && (
@@ -250,8 +302,27 @@ export default function HabitacionesPage() {
         <div className="grid gap-4">
           {rooms.map((room) => (
             <div key={room.id} className="card p-6 flex flex-col md:flex-row gap-4">
-              <div className="h-24 w-24 flex-shrink-0 rounded-xl bg-stone-100 flex items-center justify-center text-3xl">
-                🏠
+              <div className="relative h-24 w-24 flex-shrink-0">
+                {room.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={room.imageUrl}
+                    alt={room.name}
+                    className="h-24 w-24 rounded-xl object-cover border border-stone-200"
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-xl bg-stone-100 flex items-center justify-center text-3xl">
+                    🏠
+                  </div>
+                )}
+                <button
+                  onClick={() => handlePhotoButtonClick(room.id)}
+                  disabled={uploadingPhotoId === room.id}
+                  title={room.imageUrl ? "Cambiar foto" : "Añadir foto"}
+                  className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center text-xs hover:bg-stone-50 disabled:opacity-60"
+                >
+                  {uploadingPhotoId === room.id ? "…" : "📷"}
+                </button>
               </div>
               <div className="flex-1">
                 <div className="flex items-start justify-between mb-2">
