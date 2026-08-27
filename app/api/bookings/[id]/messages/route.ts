@@ -40,11 +40,11 @@ export async function POST(
   }
 
   try {
-    const { body } = (await request.json()) as { body?: string };
+    const { body, replyToId } = (await request.json()) as { body?: string; replyToId?: string };
     if (!body) {
       return NextResponse.json({ error: "El mensaje no puede estar vacío." }, { status: 400 });
     }
-    const data = await sendStaffMessage(params.id, body);
+    const data = await sendStaffMessage(params.id, body, replyToId ?? null);
     return NextResponse.json({ data });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No se pudo enviar el mensaje.";

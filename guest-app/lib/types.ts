@@ -28,6 +28,12 @@ export interface GuestServiceRequest {
   updatedAt: string;
 }
 
+export interface GuestMessageQuote {
+  id: string;
+  sender: MessageSender;
+  body: string;
+}
+
 export interface GuestMessage {
   id: string;
   bookingId: string;
@@ -35,6 +41,8 @@ export interface GuestMessage {
   body: string;
   readAt: string | null;
   createdAt: string;
+  replyToId: string | null;
+  replyTo: GuestMessageQuote | null;
 }
 
 export type RouteDifficulty = "EASY" | "MODERATE" | "HARD";

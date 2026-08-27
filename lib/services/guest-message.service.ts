@@ -12,6 +12,7 @@ export async function listMessages(bookingId: string) {
   return prisma.guestMessage.findMany({
     where: { bookingId },
     orderBy: { createdAt: "asc" },
+    include: { replyTo: { select: { id: true, sender: true, body: true } } },
   });
 }
 
@@ -30,6 +31,7 @@ export async function listMessagesForGuest(bookingId: string) {
       ...(booking?.guestChatClearedAt ? { createdAt: { gt: booking.guestChatClearedAt } } : {}),
     },
     orderBy: { createdAt: "asc" },
+    include: { replyTo: { select: { id: true, sender: true, body: true } } },
   });
 }
 
@@ -42,21 +44,38 @@ export async function clearGuestChat(bookingId: string) {
   });
 }
 
-export async function sendGuestMessage(bookingId: string, body: string) {
-  return createMessage(bookingId, MessageSender.GUEST, body);
+export async function sendGuestMessage(bookingId: string, body: string, replyToId?: string | null) {
+  return createMessage(bookingId, MessageSender.GUEST, body, replyToId);
 }
 
-export async function sendStaffMessage(bookingId: string, body: string) {
-  return createMessage(bookingId, MessageSender.STAFF, body);
+export async function sendStaffMessage(bookingId: string, body: string, replyToId?: string | null) {
+  return createMessage(bookingId, MessageSender.STAFF, body, replyToId);
 }
 
-async function createMessage(bookingId: string, sender: MessageSender, body: string) {
+async function createMessage(
+  bookingId: string,
+  sender: MessageSender,
+  body: string,
+  replyToId?: string | null
+) {
   const trimmed = body.trim();
   if (!trimmed) throw new Error("El mensaje no puede estar vacío.");
   if (trimmed.length > 2000) throw new Error("El mensaje es demasiado largo.");
 
+  // Solo se puede citar un mensaje del mismo hilo — evita que se filtre
+  // contenido de otra reserva pasando un id ajeno.
+  let validReplyToId: string | null = null;
+  if (replyToId) {
+    const replyTarget = await prisma.guestMessage.findUnique({
+      where: { id: replyToId },
+      select: { bookingId: true },
+    });
+    if (replyTarget?.bookingId === bookingId) validReplyToId = replyToId;
+  }
+
   return prisma.guestMessage.create({
-    data: { bookingId, sender, body: trimmed },
+    data: { bookingId, sender, body: trimmed, replyToId: validReplyToId },
+    include: { replyTo: { select: { id: true, sender: true, body: true } } },
   });
 }
 

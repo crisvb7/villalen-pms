@@ -156,10 +156,10 @@ export async function fetchMessages() {
   return request<{ data: GuestMessage[] }>("/api/guest-app/messages");
 }
 
-export async function sendMessage(body: string) {
+export async function sendMessage(body: string, replyToId?: string | null) {
   return request<{ data: GuestMessage }>("/api/guest-app/messages", {
     method: "POST",
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, replyToId: replyToId ?? undefined }),
   });
 }
 

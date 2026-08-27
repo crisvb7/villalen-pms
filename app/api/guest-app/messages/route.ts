@@ -32,9 +32,10 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
   const text = typeof body?.body === "string" ? body.body : "";
+  const replyToId = typeof body?.replyToId === "string" ? body.replyToId : null;
 
   try {
-    const message = await sendGuestMessage(booking.id, text);
+    const message = await sendGuestMessage(booking.id, text, replyToId);
     return NextResponse.json({ data: message });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "No se pudo enviar el mensaje.";

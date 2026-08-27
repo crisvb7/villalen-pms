@@ -590,6 +590,16 @@ export default function BookingDetailScreen() {
                   m.sender === "STAFF" ? styles.messageBubbleStaff : styles.messageBubbleGuest,
                 ]}
               >
+                {m.replyTo ? (
+                  <View style={[styles.messageQuote, m.sender === "STAFF" && styles.messageQuoteOnDark]}>
+                    <Text
+                      style={[styles.messageQuoteText, m.sender === "STAFF" && styles.messageQuoteTextOnDark]}
+                      numberOfLines={1}
+                    >
+                      {m.replyTo.sender === "STAFF" ? "Recepción" : "Huésped"}: {m.replyTo.body}
+                    </Text>
+                  </View>
+                ) : null}
                 <Text style={m.sender === "STAFF" ? styles.messageTextStaff : styles.messageText}>
                   {m.body}
                 </Text>
@@ -1395,6 +1405,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignSelf: "flex-end",
   },
+  messageQuote: {
+    borderLeftWidth: 2,
+    borderLeftColor: colors.border,
+    backgroundColor: colors.background,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 6,
+  },
+  messageQuoteOnDark: { backgroundColor: "rgba(255,255,255,0.12)", borderLeftColor: "rgba(255,255,255,0.6)" },
+  messageQuoteText: { color: colors.textMuted, fontSize: 12 },
+  messageQuoteTextOnDark: { color: "rgba(255,255,255,0.85)" },
   messageText: {
     color: colors.text,
     fontSize: 14,

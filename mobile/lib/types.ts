@@ -245,6 +245,8 @@ export interface GuestMessageItem {
   sender: "GUEST" | "STAFF";
   body: string;
   createdAt: string;
+  replyToId: string | null;
+  replyTo: { id: string; sender: "GUEST" | "STAFF"; body: string } | null;
 }
 
 export interface TodayBoardRow {

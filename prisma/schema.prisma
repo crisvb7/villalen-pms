@@ -249,6 +249,12 @@ model GuestMessage {
   readAt    DateTime?
   createdAt DateTime      @default(now())
 
+  // Responder a un mensaje concreto del hilo (estilo WhatsApp). Opcional,
+  // SetNull para no perder el mensaje si algún día se borra el original.
+  replyToId String?
+  replyTo   GuestMessage?  @relation("GuestMessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   GuestMessage[] @relation("GuestMessageReply")
+
   booking Booking @relation(fields: [bookingId], references: [id])
 
   @@index([bookingId, createdAt])
