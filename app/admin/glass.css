@@ -1,0 +1,1027 @@
+/* app/admin/glass.css
+   ─────────────────────────────────────────────────────────────────────────
+   Tema "cristal" del backoffice: panel de vidrio esmerilado sobre una foto
+   de Villalén, tarjetas translúcidas y acento cobre.
+
+   Las páginas del admin están escritas con utilidades de Tailwind de modo
+   claro (bg-white, text-stone-800, bg-emerald-50...). En vez de reescribirlas
+   una a una, aquí se reasignan esas utilidades a su equivalente oscuro, solo
+   dentro de `.pms-shell` (app/admin/layout.tsx) — así el login, /reserva y
+   /precheckin no se ven afectados y la lógica de cada página no se toca.
+
+   Especificidad: `.pms-shell .clase` (0,2,0) gana a la utilidad suelta
+   (0,1,0) sin necesidad de !important. Los componentes (.card, .btn-*...)
+   llevan además `:root` delante para ganar también a las reglas
+   `.pms-shell .card` de globals.css, sea cual sea el orden de carga.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.pms-shell {
+  --glass-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --glass-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --glass-copper: #c98a5a;
+  --glass-copper-strong: #b0703f;
+  --glass-copper-soft: rgba(201, 138, 90, 0.22);
+  --glass-surface: rgba(255, 255, 255, 0.07);
+  --glass-surface-strong: rgba(255, 255, 255, 0.11);
+  --glass-line: rgba(255, 255, 255, 0.12);
+  --glass-text: rgba(255, 255, 255, 0.95);
+  --glass-muted: rgba(255, 255, 255, 0.62);
+  --glass-faint: rgba(255, 255, 255, 0.45);
+  --glass-modal: rgba(44, 40, 36, 0.94);
+
+  color-scheme: dark;
+  color: var(--glass-text);
+  background: #1b1916;
+}
+
+/* ── Fondo y marco ─────────────────────────────────────────────────────── */
+
+.glass-bg {
+  position: fixed;
+  inset: 0;
+  background: url("/images/hero-villalen.jpg") center / cover no-repeat;
+  transform: scale(1.04);
+}
+
+.glass-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(24, 20, 16, 0.25), rgba(24, 20, 16, 0.6)),
+    linear-gradient(180deg, rgba(24, 20, 16, 0.2), rgba(24, 20, 16, 0.45));
+}
+
+/* El backdrop-filter convierte el marco en el "contenedor" de los elementos
+   position:fixed de dentro: los modales cubren el panel de cristal (no la
+   foto de fondo), igual que en el diseño de referencia. */
+.glass-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 32px);
+  margin: 16px;
+  overflow: hidden;
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(62, 57, 51, 0.52);
+  backdrop-filter: blur(28px) saturate(1.15);
+  -webkit-backdrop-filter: blur(28px) saturate(1.15);
+  box-shadow:
+    0 40px 90px -30px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: glass-frame-in 700ms var(--glass-ease-out) backwards;
+}
+
+@keyframes glass-frame-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+/* ── Menú lateral flotante ─────────────────────────────────────────────── */
+
+.glass-nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Círculo blanco que se desliza hasta la sección activa. */
+.glass-nav-indicator {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 280ms var(--glass-ease-in-out),
+    opacity 150ms ease;
+}
+
+.glass-nav-item {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: var(--glass-muted);
+  transition:
+    color 220ms ease,
+    background-color 200ms ease,
+    transform 160ms var(--glass-ease-out);
+}
+
+.glass-nav-item[aria-current="page"] {
+  color: #1c1917;
+}
+
+.glass-nav-item:active {
+  transform: scale(0.92);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-nav-item:not([aria-current="page"]):hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.09);
+  }
+}
+
+.glass-badge-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--glass-copper);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Tooltip al pasar el ratón (como "Home", "Rooms & Zones" en la referencia). */
+.glass-tip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 14px);
+  z-index: 40;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-line);
+  background: rgba(32, 29, 26, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-4px, -50%) scale(0.97);
+  transform-origin: left center;
+  transition:
+    opacity 150ms ease-out,
+    transform 150ms var(--glass-ease-out);
+}
+
+.glass-nav-item:hover .glass-tip,
+.glass-nav-item:focus-visible .glass-tip,
+.glass-icon-btn:hover .glass-tip,
+.glass-icon-btn:focus-visible .glass-tip {
+  opacity: 1;
+  transform: translate(0, -50%) scale(1);
+}
+
+/* ── Cabecera ──────────────────────────────────────────────────────────── */
+
+.glass-icon-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.85);
+  transition:
+    background-color 200ms ease,
+    transform 160ms var(--glass-ease-out);
+}
+
+.glass-icon-btn:active {
+  transform: scale(0.94);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+/* Tooltip de los botones de cabecera: debajo, no a la derecha. */
+.glass-icon-btn .glass-tip {
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translate(-50%, -4px) scale(0.97);
+  transform-origin: top center;
+}
+
+.glass-icon-btn:hover .glass-tip,
+.glass-icon-btn:focus-visible .glass-tip {
+  transform: translate(-50%, 0) scale(1);
+}
+
+/* Desplegables (avisos, cuenta) — crecen desde el botón que los abre. */
+.glass-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 50;
+  min-width: 260px;
+  padding: 8px;
+  border-radius: 20px;
+  border: 1px solid var(--glass-line);
+  background: rgba(38, 35, 31, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6);
+  transform-origin: top right;
+  transition:
+    opacity 180ms ease-out,
+    transform 180ms var(--glass-ease-out),
+    visibility 0s linear 180ms;
+}
+
+.glass-popover[data-open="false"] {
+  opacity: 0;
+  transform: scale(0.96) translateY(-4px);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.glass-popover[data-open="true"] {
+  transition-delay: 0s;
+}
+
+.glass-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  text-align: left;
+  transition: background-color 150ms ease;
+}
+
+.glass-popover-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* ── Piezas reutilizables del dashboard ────────────────────────────────── */
+
+/* Píldora blanca (avisos, resúmenes), como en la referencia. Dentro no se
+   usan las utilidades reasignadas: lleva sus propios colores oscuros. */
+.glass-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.93);
+  color: #292524;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.5);
+  transition: transform 160ms var(--glass-ease-out), background-color 200ms ease;
+}
+
+a.glass-pill:active,
+button.glass-pill:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.glass-pill:hover,
+  button.glass-pill:hover {
+    background: #fff;
+  }
+}
+
+.glass-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.glass-chip-copper {
+  border-color: transparent;
+  background: var(--glass-copper);
+  color: #fff;
+}
+
+/* Interruptor estilo iOS en cobre. */
+.glass-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  transition:
+    background-color 220ms ease,
+    transform 160ms var(--glass-ease-out);
+}
+
+.glass-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 260ms var(--glass-ease-out);
+}
+
+.glass-switch[aria-checked="true"] {
+  background: var(--glass-copper);
+}
+
+.glass-switch[aria-checked="true"]::after {
+  transform: translateX(18px);
+}
+
+.glass-switch:active {
+  transform: scale(0.95);
+}
+
+.glass-switch:disabled {
+  opacity: 0.6;
+}
+
+/* ── Animaciones de entrada ────────────────────────────────────────────── */
+
+/* Al cambiar de sección, los bloques de la página aparecen escalonados.
+   fill-mode "backwards" (no "both"): al terminar no deja ningún transform
+   aplicado, que convertiría al contenedor en referencia de los modales
+   position:fixed de la página. */
+@keyframes glass-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Cambio de sección: se usa decenas de veces al día, así que es un
+   fundido muy corto que nunca retrasa la lectura de la página. */
+.glass-page > * > * {
+  animation: glass-rise 200ms var(--glass-ease-out) backwards;
+}
+
+.glass-page > * > :nth-child(2) { animation-delay: 20ms; }
+.glass-page > * > :nth-child(n + 3) { animation-delay: 40ms; }
+
+/* Rejilla del dashboard: cada tarjeta entra por separado. */
+.glass-stagger > * {
+  animation: glass-rise 240ms var(--glass-ease-out) backwards;
+}
+
+.glass-stagger > :nth-child(2) { animation-delay: 15ms; }
+.glass-stagger > :nth-child(3) { animation-delay: 30ms; }
+.glass-stagger > :nth-child(4) { animation-delay: 45ms; }
+.glass-stagger > :nth-child(5) { animation-delay: 60ms; }
+.glass-stagger > :nth-child(n + 6) { animation-delay: 75ms; }
+
+/* Línea de la gráfica de ocupación: se dibuja de izquierda a derecha. */
+@keyframes glass-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+.glass-draw {
+  stroke-dasharray: 1;
+  animation: glass-draw 700ms var(--glass-ease-in-out) 80ms backwards;
+}
+
+@keyframes glass-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.glass-fade-in {
+  animation: glass-fade 300ms ease 150ms backwards;
+}
+
+/* Modales: el fondo se desenfoca y el panel aparece con un ligero zoom. */
+.pms-shell .fixed.inset-0 {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: glass-fade 200ms ease-out;
+}
+
+@keyframes glass-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+}
+
+:root .pms-shell .fixed.inset-0 > :is(.bg-white, .card) {
+  border: 1px solid var(--glass-line);
+  background: var(--glass-modal);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7);
+  animation: glass-pop 240ms var(--glass-ease-out) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-frame,
+  .glass-page > * > *,
+  .glass-stagger > *,
+  .glass-draw,
+  :root .pms-shell .fixed.inset-0 > :is(.bg-white, .card) {
+    animation-name: glass-fade;
+  }
+
+  .glass-nav-indicator {
+    transition: opacity 200ms ease;
+  }
+}
+
+/* ── Tipografía ─────────────────────────────────────────────────────────
+   La referencia usa una sans limpia en títulos y cifras, no la serif. */
+.pms-shell :is(h1, h2, h3, h4, .font-serif) {
+  font-family: "DM Sans", system-ui, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+.pms-shell h1 {
+  font-weight: 500;
+}
+
+.pms-shell :is(h2, h3) {
+  font-weight: 500;
+}
+
+/* ── Componentes de globals.css ────────────────────────────────────────── */
+
+:root .pms-shell .card {
+  border: 1px solid var(--glass-line);
+  border-radius: 24px;
+  background: var(--glass-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+:root .pms-shell :is(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger, .chip, .filter-chip) {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    transform 160ms var(--glass-ease-out);
+}
+
+:root .pms-shell :is(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger, .chip, .filter-chip):not(:disabled):active {
+  transform: scale(0.97);
+}
+
+:root .pms-shell .btn-primary {
+  border-radius: 999px;
+  background: var(--glass-copper);
+  color: #fff;
+  box-shadow: 0 10px 24px -12px rgba(201, 138, 90, 0.8);
+}
+
+:root .pms-shell .btn-primary:hover:not(:disabled) {
+  background: var(--glass-copper-strong);
+}
+
+:root .pms-shell .btn-secondary {
+  border-radius: 999px;
+  border-color: var(--glass-line);
+  background: var(--glass-surface);
+  color: var(--glass-text);
+}
+
+:root .pms-shell .btn-secondary:hover:not(:disabled) {
+  background: var(--glass-surface-strong);
+}
+
+:root .pms-shell .btn-ghost {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+:root .pms-shell .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+:root .pms-shell .input {
+  border-radius: 14px;
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--glass-text);
+}
+
+:root .pms-shell .input::placeholder {
+  color: var(--glass-faint);
+}
+
+:root .pms-shell .input:focus {
+  border-color: var(--glass-copper);
+  box-shadow: 0 0 0 3px var(--glass-copper-soft);
+  --tw-ring-color: transparent;
+}
+
+:root .pms-shell .input:disabled {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--glass-faint);
+}
+
+:root .pms-shell .label {
+  color: var(--glass-muted);
+}
+
+:root .pms-shell .table-row-hover:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pms-shell select option,
+.pms-shell select optgroup {
+  background: #2b2724;
+  color: #fff;
+}
+
+.pms-shell ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.pms-shell ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18) padding-box;
+}
+
+.pms-shell ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Reasignación de utilidades neutras (stone / white / black) ────────── */
+
+.pms-shell :is(.text-stone-950, .text-stone-900, .text-stone-800) { color: rgba(255, 255, 255, 0.95); }
+.pms-shell .text-stone-700 { color: rgba(255, 255, 255, 0.86); }
+.pms-shell .text-stone-600 { color: rgba(255, 255, 255, 0.74); }
+.pms-shell .text-stone-500 { color: rgba(255, 255, 255, 0.62); }
+.pms-shell .text-stone-400 { color: rgba(255, 255, 255, 0.5); }
+.pms-shell .text-stone-300 { color: rgba(255, 255, 255, 0.4); }
+.pms-shell :is(.hover\:text-stone-900, .hover\:text-stone-800, .hover\:text-stone-700, .hover\:text-stone-300):hover { color: #fff; }
+
+.pms-shell .bg-white { background-color: var(--glass-surface); }
+.pms-shell .bg-stone-50 { background-color: rgba(255, 255, 255, 0.05); }
+.pms-shell .bg-stone-50\/60 { background-color: rgba(255, 255, 255, 0.04); }
+.pms-shell .bg-stone-100 { background-color: rgba(255, 255, 255, 0.08); }
+.pms-shell .bg-stone-200 { background-color: rgba(255, 255, 255, 0.12); }
+.pms-shell .hover\:bg-stone-50:hover { background-color: rgba(255, 255, 255, 0.07); }
+.pms-shell .hover\:bg-stone-100:hover { background-color: rgba(255, 255, 255, 0.1); }
+.pms-shell .hover\:bg-stone-200:hover { background-color: rgba(255, 255, 255, 0.14); }
+.pms-shell .hover\:bg-white:hover { background-color: var(--glass-surface-strong); }
+
+/* Superficies oscuras sólidas (botones/pestañas activas) → píldora blanca,
+   igual que el elemento activo de la referencia. */
+.pms-shell :is(.bg-stone-700, .bg-stone-800, .bg-stone-900) { background-color: rgba(255, 255, 255, 0.92); color: #1c1917; }
+.pms-shell :is(.bg-stone-700, .bg-stone-800, .bg-stone-900):is(.text-white, .text-stone-100, .text-stone-50) { color: #1c1917; }
+.pms-shell :is(.hover\:bg-stone-700, .hover\:bg-stone-800, .hover\:bg-stone-900):hover { background-color: #fff; color: #1c1917; }
+
+.pms-shell .border-stone-50 { border-color: rgba(255, 255, 255, 0.05); }
+.pms-shell .border-stone-100 { border-color: rgba(255, 255, 255, 0.08); }
+.pms-shell .border-stone-200 { border-color: rgba(255, 255, 255, 0.12); }
+.pms-shell .border-stone-300 { border-color: rgba(255, 255, 255, 0.18); }
+.pms-shell :is(.divide-stone-50, .divide-stone-100, .divide-stone-200) > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255, 255, 255, 0.07); }
+
+.pms-shell .bg-black\/40,
+.pms-shell .bg-black\/50 { background-color: rgba(12, 10, 8, 0.45); }
+
+/* Acento de marca: el azul pizarra pasa a cobre, como en la referencia. */
+.pms-shell .bg-villalen-600 { background-color: var(--glass-copper); }
+.pms-shell :is(.hover\:bg-villalen-600, .hover\:bg-villalen-800):hover { background-color: var(--glass-copper-strong); }
+.pms-shell :is(.border-villalen-600, .border-villalen-400) { border-color: var(--glass-copper); }
+.pms-shell .ring-villalen-400 { --tw-ring-color: var(--glass-copper); }
+.pms-shell .bg-villalen-50\/50,
+.pms-shell .hover\:bg-villalen-50\/40:hover,
+.pms-shell .hover\:bg-villalen-50\/50:hover { background-color: rgba(255, 255, 255, 0.05); }
+
+/* ── Reasignación de utilidades de color (generado) ────────────────────── */
+.pms-shell .text-red-500,
+.pms-shell .text-red-600,
+.pms-shell .text-red-700,
+.pms-shell .text-red-800,
+.pms-shell .text-red-900,
+.pms-shell .hover\:text-red-600:hover,
+.pms-shell .hover\:text-red-700:hover,
+.pms-shell .hover\:text-red-800:hover { color: #fca5a5; }
+.pms-shell .bg-red-50 { background-color: rgba(239,68,68,0.12); }
+.pms-shell .hover\:bg-red-50:hover { background-color: rgba(239,68,68,0.2); }
+.pms-shell .bg-red-100 { background-color: rgba(239,68,68,0.18); }
+.pms-shell .hover\:bg-red-100:hover { background-color: rgba(239,68,68,0.26); }
+.pms-shell .bg-red-200 { background-color: rgba(239,68,68,0.24); }
+.pms-shell .hover\:bg-red-200:hover { background-color: rgba(239,68,68,0.32); }
+.pms-shell .border-red-50 { border-color: rgba(239,68,68,0.22); }
+.pms-shell .border-red-100 { border-color: rgba(239,68,68,0.28); }
+.pms-shell .border-red-200 { border-color: rgba(239,68,68,0.35); }
+.pms-shell .border-red-300 { border-color: rgba(239,68,68,0.45); }
+.pms-shell .text-emerald-500,
+.pms-shell .text-emerald-600,
+.pms-shell .text-emerald-700,
+.pms-shell .text-emerald-800,
+.pms-shell .text-emerald-900,
+.pms-shell .hover\:text-emerald-600:hover,
+.pms-shell .hover\:text-emerald-700:hover,
+.pms-shell .hover\:text-emerald-800:hover { color: #6ee7b7; }
+.pms-shell .bg-emerald-50 { background-color: rgba(16,185,129,0.12); }
+.pms-shell .hover\:bg-emerald-50:hover { background-color: rgba(16,185,129,0.2); }
+.pms-shell .bg-emerald-100 { background-color: rgba(16,185,129,0.18); }
+.pms-shell .hover\:bg-emerald-100:hover { background-color: rgba(16,185,129,0.26); }
+.pms-shell .bg-emerald-200 { background-color: rgba(16,185,129,0.24); }
+.pms-shell .hover\:bg-emerald-200:hover { background-color: rgba(16,185,129,0.32); }
+.pms-shell .border-emerald-50 { border-color: rgba(16,185,129,0.22); }
+.pms-shell .border-emerald-100 { border-color: rgba(16,185,129,0.28); }
+.pms-shell .border-emerald-200 { border-color: rgba(16,185,129,0.35); }
+.pms-shell .border-emerald-300 { border-color: rgba(16,185,129,0.45); }
+.pms-shell .text-green-500,
+.pms-shell .text-green-600,
+.pms-shell .text-green-700,
+.pms-shell .text-green-800,
+.pms-shell .text-green-900,
+.pms-shell .hover\:text-green-600:hover,
+.pms-shell .hover\:text-green-700:hover,
+.pms-shell .hover\:text-green-800:hover { color: #86efac; }
+.pms-shell .bg-green-50 { background-color: rgba(34,197,94,0.12); }
+.pms-shell .hover\:bg-green-50:hover { background-color: rgba(34,197,94,0.2); }
+.pms-shell .bg-green-100 { background-color: rgba(34,197,94,0.18); }
+.pms-shell .hover\:bg-green-100:hover { background-color: rgba(34,197,94,0.26); }
+.pms-shell .bg-green-200 { background-color: rgba(34,197,94,0.24); }
+.pms-shell .hover\:bg-green-200:hover { background-color: rgba(34,197,94,0.32); }
+.pms-shell .border-green-50 { border-color: rgba(34,197,94,0.22); }
+.pms-shell .border-green-100 { border-color: rgba(34,197,94,0.28); }
+.pms-shell .border-green-200 { border-color: rgba(34,197,94,0.35); }
+.pms-shell .border-green-300 { border-color: rgba(34,197,94,0.45); }
+.pms-shell .text-amber-500,
+.pms-shell .text-amber-600,
+.pms-shell .text-amber-700,
+.pms-shell .text-amber-800,
+.pms-shell .text-amber-900,
+.pms-shell .hover\:text-amber-600:hover,
+.pms-shell .hover\:text-amber-700:hover,
+.pms-shell .hover\:text-amber-800:hover { color: #fcd34d; }
+.pms-shell .bg-amber-50 { background-color: rgba(245,158,11,0.12); }
+.pms-shell .hover\:bg-amber-50:hover { background-color: rgba(245,158,11,0.2); }
+.pms-shell .bg-amber-100 { background-color: rgba(245,158,11,0.18); }
+.pms-shell .hover\:bg-amber-100:hover { background-color: rgba(245,158,11,0.26); }
+.pms-shell .bg-amber-200 { background-color: rgba(245,158,11,0.24); }
+.pms-shell .hover\:bg-amber-200:hover { background-color: rgba(245,158,11,0.32); }
+.pms-shell .border-amber-50 { border-color: rgba(245,158,11,0.22); }
+.pms-shell .border-amber-100 { border-color: rgba(245,158,11,0.28); }
+.pms-shell .border-amber-200 { border-color: rgba(245,158,11,0.35); }
+.pms-shell .border-amber-300 { border-color: rgba(245,158,11,0.45); }
+.pms-shell .text-orange-500,
+.pms-shell .text-orange-600,
+.pms-shell .text-orange-700,
+.pms-shell .text-orange-800,
+.pms-shell .text-orange-900,
+.pms-shell .hover\:text-orange-600:hover,
+.pms-shell .hover\:text-orange-700:hover,
+.pms-shell .hover\:text-orange-800:hover { color: #fdba74; }
+.pms-shell .bg-orange-50 { background-color: rgba(249,115,22,0.12); }
+.pms-shell .hover\:bg-orange-50:hover { background-color: rgba(249,115,22,0.2); }
+.pms-shell .bg-orange-100 { background-color: rgba(249,115,22,0.18); }
+.pms-shell .hover\:bg-orange-100:hover { background-color: rgba(249,115,22,0.26); }
+.pms-shell .bg-orange-200 { background-color: rgba(249,115,22,0.24); }
+.pms-shell .hover\:bg-orange-200:hover { background-color: rgba(249,115,22,0.32); }
+.pms-shell .border-orange-50 { border-color: rgba(249,115,22,0.22); }
+.pms-shell .border-orange-100 { border-color: rgba(249,115,22,0.28); }
+.pms-shell .border-orange-200 { border-color: rgba(249,115,22,0.35); }
+.pms-shell .border-orange-300 { border-color: rgba(249,115,22,0.45); }
+.pms-shell .text-yellow-500,
+.pms-shell .text-yellow-600,
+.pms-shell .text-yellow-700,
+.pms-shell .text-yellow-800,
+.pms-shell .text-yellow-900,
+.pms-shell .hover\:text-yellow-600:hover,
+.pms-shell .hover\:text-yellow-700:hover,
+.pms-shell .hover\:text-yellow-800:hover { color: #fde047; }
+.pms-shell .bg-yellow-50 { background-color: rgba(234,179,8,0.12); }
+.pms-shell .hover\:bg-yellow-50:hover { background-color: rgba(234,179,8,0.2); }
+.pms-shell .bg-yellow-100 { background-color: rgba(234,179,8,0.18); }
+.pms-shell .hover\:bg-yellow-100:hover { background-color: rgba(234,179,8,0.26); }
+.pms-shell .bg-yellow-200 { background-color: rgba(234,179,8,0.24); }
+.pms-shell .hover\:bg-yellow-200:hover { background-color: rgba(234,179,8,0.32); }
+.pms-shell .border-yellow-50 { border-color: rgba(234,179,8,0.22); }
+.pms-shell .border-yellow-100 { border-color: rgba(234,179,8,0.28); }
+.pms-shell .border-yellow-200 { border-color: rgba(234,179,8,0.35); }
+.pms-shell .border-yellow-300 { border-color: rgba(234,179,8,0.45); }
+.pms-shell .text-blue-500,
+.pms-shell .text-blue-600,
+.pms-shell .text-blue-700,
+.pms-shell .text-blue-800,
+.pms-shell .text-blue-900,
+.pms-shell .hover\:text-blue-600:hover,
+.pms-shell .hover\:text-blue-700:hover,
+.pms-shell .hover\:text-blue-800:hover { color: #93c5fd; }
+.pms-shell .bg-blue-50 { background-color: rgba(59,130,246,0.12); }
+.pms-shell .hover\:bg-blue-50:hover { background-color: rgba(59,130,246,0.2); }
+.pms-shell .bg-blue-100 { background-color: rgba(59,130,246,0.18); }
+.pms-shell .hover\:bg-blue-100:hover { background-color: rgba(59,130,246,0.26); }
+.pms-shell .bg-blue-200 { background-color: rgba(59,130,246,0.24); }
+.pms-shell .hover\:bg-blue-200:hover { background-color: rgba(59,130,246,0.32); }
+.pms-shell .border-blue-50 { border-color: rgba(59,130,246,0.22); }
+.pms-shell .border-blue-100 { border-color: rgba(59,130,246,0.28); }
+.pms-shell .border-blue-200 { border-color: rgba(59,130,246,0.35); }
+.pms-shell .border-blue-300 { border-color: rgba(59,130,246,0.45); }
+.pms-shell .text-sky-500,
+.pms-shell .text-sky-600,
+.pms-shell .text-sky-700,
+.pms-shell .text-sky-800,
+.pms-shell .text-sky-900,
+.pms-shell .hover\:text-sky-600:hover,
+.pms-shell .hover\:text-sky-700:hover,
+.pms-shell .hover\:text-sky-800:hover { color: #7dd3fc; }
+.pms-shell .bg-sky-50 { background-color: rgba(14,165,233,0.12); }
+.pms-shell .hover\:bg-sky-50:hover { background-color: rgba(14,165,233,0.2); }
+.pms-shell .bg-sky-100 { background-color: rgba(14,165,233,0.18); }
+.pms-shell .hover\:bg-sky-100:hover { background-color: rgba(14,165,233,0.26); }
+.pms-shell .bg-sky-200 { background-color: rgba(14,165,233,0.24); }
+.pms-shell .hover\:bg-sky-200:hover { background-color: rgba(14,165,233,0.32); }
+.pms-shell .border-sky-50 { border-color: rgba(14,165,233,0.22); }
+.pms-shell .border-sky-100 { border-color: rgba(14,165,233,0.28); }
+.pms-shell .border-sky-200 { border-color: rgba(14,165,233,0.35); }
+.pms-shell .border-sky-300 { border-color: rgba(14,165,233,0.45); }
+.pms-shell .text-indigo-500,
+.pms-shell .text-indigo-600,
+.pms-shell .text-indigo-700,
+.pms-shell .text-indigo-800,
+.pms-shell .text-indigo-900,
+.pms-shell .hover\:text-indigo-600:hover,
+.pms-shell .hover\:text-indigo-700:hover,
+.pms-shell .hover\:text-indigo-800:hover { color: #a5b4fc; }
+.pms-shell .bg-indigo-50 { background-color: rgba(99,102,241,0.12); }
+.pms-shell .hover\:bg-indigo-50:hover { background-color: rgba(99,102,241,0.2); }
+.pms-shell .bg-indigo-100 { background-color: rgba(99,102,241,0.18); }
+.pms-shell .hover\:bg-indigo-100:hover { background-color: rgba(99,102,241,0.26); }
+.pms-shell .bg-indigo-200 { background-color: rgba(99,102,241,0.24); }
+.pms-shell .hover\:bg-indigo-200:hover { background-color: rgba(99,102,241,0.32); }
+.pms-shell .border-indigo-50 { border-color: rgba(99,102,241,0.22); }
+.pms-shell .border-indigo-100 { border-color: rgba(99,102,241,0.28); }
+.pms-shell .border-indigo-200 { border-color: rgba(99,102,241,0.35); }
+.pms-shell .border-indigo-300 { border-color: rgba(99,102,241,0.45); }
+.pms-shell .text-purple-500,
+.pms-shell .text-purple-600,
+.pms-shell .text-purple-700,
+.pms-shell .text-purple-800,
+.pms-shell .text-purple-900,
+.pms-shell .hover\:text-purple-600:hover,
+.pms-shell .hover\:text-purple-700:hover,
+.pms-shell .hover\:text-purple-800:hover { color: #d8b4fe; }
+.pms-shell .bg-purple-50 { background-color: rgba(168,85,247,0.12); }
+.pms-shell .hover\:bg-purple-50:hover { background-color: rgba(168,85,247,0.2); }
+.pms-shell .bg-purple-100 { background-color: rgba(168,85,247,0.18); }
+.pms-shell .hover\:bg-purple-100:hover { background-color: rgba(168,85,247,0.26); }
+.pms-shell .bg-purple-200 { background-color: rgba(168,85,247,0.24); }
+.pms-shell .hover\:bg-purple-200:hover { background-color: rgba(168,85,247,0.32); }
+.pms-shell .border-purple-50 { border-color: rgba(168,85,247,0.22); }
+.pms-shell .border-purple-100 { border-color: rgba(168,85,247,0.28); }
+.pms-shell .border-purple-200 { border-color: rgba(168,85,247,0.35); }
+.pms-shell .border-purple-300 { border-color: rgba(168,85,247,0.45); }
+.pms-shell .text-rose-500,
+.pms-shell .text-rose-600,
+.pms-shell .text-rose-700,
+.pms-shell .text-rose-800,
+.pms-shell .text-rose-900,
+.pms-shell .hover\:text-rose-600:hover,
+.pms-shell .hover\:text-rose-700:hover,
+.pms-shell .hover\:text-rose-800:hover { color: #fda4af; }
+.pms-shell .bg-rose-50 { background-color: rgba(244,63,94,0.12); }
+.pms-shell .hover\:bg-rose-50:hover { background-color: rgba(244,63,94,0.2); }
+.pms-shell .bg-rose-100 { background-color: rgba(244,63,94,0.18); }
+.pms-shell .hover\:bg-rose-100:hover { background-color: rgba(244,63,94,0.26); }
+.pms-shell .bg-rose-200 { background-color: rgba(244,63,94,0.24); }
+.pms-shell .hover\:bg-rose-200:hover { background-color: rgba(244,63,94,0.32); }
+.pms-shell .border-rose-50 { border-color: rgba(244,63,94,0.22); }
+.pms-shell .border-rose-100 { border-color: rgba(244,63,94,0.28); }
+.pms-shell .border-rose-200 { border-color: rgba(244,63,94,0.35); }
+.pms-shell .border-rose-300 { border-color: rgba(244,63,94,0.45); }
+.pms-shell .text-teal-500,
+.pms-shell .text-teal-600,
+.pms-shell .text-teal-700,
+.pms-shell .text-teal-800,
+.pms-shell .text-teal-900,
+.pms-shell .hover\:text-teal-600:hover,
+.pms-shell .hover\:text-teal-700:hover,
+.pms-shell .hover\:text-teal-800:hover { color: #5eead4; }
+.pms-shell .bg-teal-50 { background-color: rgba(20,184,166,0.12); }
+.pms-shell .hover\:bg-teal-50:hover { background-color: rgba(20,184,166,0.2); }
+.pms-shell .bg-teal-100 { background-color: rgba(20,184,166,0.18); }
+.pms-shell .hover\:bg-teal-100:hover { background-color: rgba(20,184,166,0.26); }
+.pms-shell .bg-teal-200 { background-color: rgba(20,184,166,0.24); }
+.pms-shell .hover\:bg-teal-200:hover { background-color: rgba(20,184,166,0.32); }
+.pms-shell .border-teal-50 { border-color: rgba(20,184,166,0.22); }
+.pms-shell .border-teal-100 { border-color: rgba(20,184,166,0.28); }
+.pms-shell .border-teal-200 { border-color: rgba(20,184,166,0.35); }
+.pms-shell .border-teal-300 { border-color: rgba(20,184,166,0.45); }
+.pms-shell .text-sage-500,
+.pms-shell .text-sage-600,
+.pms-shell .text-sage-700,
+.pms-shell .text-sage-800,
+.pms-shell .text-sage-900,
+.pms-shell .hover\:text-sage-600:hover,
+.pms-shell .hover\:text-sage-700:hover,
+.pms-shell .hover\:text-sage-800:hover { color: #b9d3b0; }
+.pms-shell .bg-sage-50 { background-color: rgba(120,170,130,0.12); }
+.pms-shell .hover\:bg-sage-50:hover { background-color: rgba(120,170,130,0.2); }
+.pms-shell .bg-sage-100 { background-color: rgba(120,170,130,0.18); }
+.pms-shell .hover\:bg-sage-100:hover { background-color: rgba(120,170,130,0.26); }
+.pms-shell .bg-sage-200 { background-color: rgba(120,170,130,0.24); }
+.pms-shell .hover\:bg-sage-200:hover { background-color: rgba(120,170,130,0.32); }
+.pms-shell .border-sage-50 { border-color: rgba(120,170,130,0.22); }
+.pms-shell .border-sage-100 { border-color: rgba(120,170,130,0.28); }
+.pms-shell .border-sage-200 { border-color: rgba(120,170,130,0.35); }
+.pms-shell .border-sage-300 { border-color: rgba(120,170,130,0.45); }
+.pms-shell .text-terracotta-500,
+.pms-shell .text-terracotta-600,
+.pms-shell .text-terracotta-700,
+.pms-shell .text-terracotta-800,
+.pms-shell .text-terracotta-900,
+.pms-shell .hover\:text-terracotta-600:hover,
+.pms-shell .hover\:text-terracotta-700:hover,
+.pms-shell .hover\:text-terracotta-800:hover { color: #ecbf93; }
+.pms-shell .bg-terracotta-50 { background-color: rgba(205,133,74,0.12); }
+.pms-shell .hover\:bg-terracotta-50:hover { background-color: rgba(205,133,74,0.2); }
+.pms-shell .bg-terracotta-100 { background-color: rgba(205,133,74,0.18); }
+.pms-shell .hover\:bg-terracotta-100:hover { background-color: rgba(205,133,74,0.26); }
+.pms-shell .bg-terracotta-200 { background-color: rgba(205,133,74,0.24); }
+.pms-shell .hover\:bg-terracotta-200:hover { background-color: rgba(205,133,74,0.32); }
+.pms-shell .border-terracotta-50 { border-color: rgba(205,133,74,0.22); }
+.pms-shell .border-terracotta-100 { border-color: rgba(205,133,74,0.28); }
+.pms-shell .border-terracotta-200 { border-color: rgba(205,133,74,0.35); }
+.pms-shell .border-terracotta-300 { border-color: rgba(205,133,74,0.45); }
+.pms-shell .text-villalen-500,
+.pms-shell .text-villalen-600,
+.pms-shell .text-villalen-700,
+.pms-shell .text-villalen-800,
+.pms-shell .text-villalen-900,
+.pms-shell .hover\:text-villalen-600:hover,
+.pms-shell .hover\:text-villalen-700:hover,
+.pms-shell .hover\:text-villalen-800:hover { color: #b4ccd3; }
+.pms-shell .bg-villalen-50 { background-color: rgba(110,150,162,0.12); }
+.pms-shell .hover\:bg-villalen-50:hover { background-color: rgba(110,150,162,0.2); }
+.pms-shell .bg-villalen-100 { background-color: rgba(110,150,162,0.18); }
+.pms-shell .hover\:bg-villalen-100:hover { background-color: rgba(110,150,162,0.26); }
+.pms-shell .bg-villalen-200 { background-color: rgba(110,150,162,0.24); }
+.pms-shell .hover\:bg-villalen-200:hover { background-color: rgba(110,150,162,0.32); }
+.pms-shell .border-villalen-50 { border-color: rgba(110,150,162,0.22); }
+.pms-shell .border-villalen-100 { border-color: rgba(110,150,162,0.28); }
+.pms-shell .border-villalen-200 { border-color: rgba(110,150,162,0.35); }
+.pms-shell .border-villalen-300 { border-color: rgba(110,150,162,0.45); }
+
+/* ── Gráficas (Recharts, /admin/estadisticas) ─────────────────────────── */
+
+.pms-shell .recharts-cartesian-grid line {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.pms-shell .recharts-cartesian-axis-line,
+.pms-shell .recharts-cartesian-axis-tick-line {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+
+.pms-shell .recharts-text {
+  fill: rgba(255, 255, 255, 0.55);
+}
+
+.pms-shell .recharts-default-tooltip {
+  border: 1px solid var(--glass-line) !important;
+  border-radius: 14px;
+  background: rgba(38, 35, 31, 0.95) !important;
+  color: #fff;
+}
+
+.pms-shell .recharts-tooltip-cursor {
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Dashboard sin scroll (/admin) ─────────────────────────────────────
+   Todo se dimensiona con la altura de la ventana (vh) para que las tres
+   filas de tarjetas quepan siempre en pantalla, de un monitor grande a un
+   portátil de 768px de alto. */
+
+.glass-page {
+  height: 100%;
+}
+
+.dash {
+  --dash-gap: clamp(10px, 1.6vh, 16px);
+}
+
+.dash-title {
+  margin-bottom: var(--dash-gap);
+}
+
+.dash-grid {
+  gap: var(--dash-gap);
+}
+
+.dash-card {
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(12px, 1.9vh, 20px);
+}
+
+.dash-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: clamp(6px, 1.2vh, 12px);
+}
+
+.dash-num {
+  margin-top: clamp(4px, 1vh, 12px);
+  color: #fff;
+  font-size: clamp(26px, 4.4vh, 42px);
+  font-weight: 300;
+  line-height: 1;
+}
+
+.dash-num.dash-num-sm {
+  font-size: clamp(18px, 2.8vh, 26px);
+}
+
+/* Listas de las tarjetas (limpieza, avisos, llegadas): si hay más elementos
+   de los que caben, se desplazan dentro de la tarjeta, no la página. */
+.dash-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.dash-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-height: 820px) {
+  .dash-optional {
+    display: none;
+  }
+}
+
+/* Degradado al final de las listas: indica que hay más elementos debajo. */
+.dash-scroll {
+  padding-bottom: 6px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
+
+/* ── Pantalla de carga entre secciones (app/admin/loading.tsx) ───────── */
+
+.glass-loading {
+  animation: glass-fade 150ms ease 80ms backwards;
+}
+
+.glass-skeleton {
+  border-radius: 20px;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.06) 30%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 70%
+  );
+  background-size: 300% 100%;
+  animation: glass-shimmer 1.4s linear infinite;
+}
+
+@keyframes glass-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-skeleton {
+    animation: none;
+  }
+}

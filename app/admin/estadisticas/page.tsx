@@ -140,7 +140,7 @@ export default function EstadisticasPage() {
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
                   <Tooltip formatter={(v) => `${v}%`} />
-                  <Line type="monotone" dataKey="Ocupación" stroke="#3e5a63" strokeWidth={2} />
+                  <Line type="monotone" dataKey="Ocupación" stroke="#c98a5a" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
