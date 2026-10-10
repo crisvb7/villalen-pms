@@ -1,5 +1,6 @@
 // app/layout.tsx
 import type { Metadata } from "next";
+import PageLoader from "./page-loader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,8 +18,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
-      <body>{children}</body>
+    // "is-loading" bloquea el scroll mientras se ve la pantalla de carga; el
+    // script de PageLoader la quita antes de hidratar (de ahí el
+    // suppressHydrationWarning).
+    <html lang="es" className="is-loading" suppressHydrationWarning>
+      <body>
+        <PageLoader />
+        {children}
+      </body>
     </html>
   );
 }

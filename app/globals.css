@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono&family=Fraunces:opsz,wght@9..144,500&family=Jost:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -125,5 +125,131 @@
 
   .pms-shell .table-row-hover {
     @apply hover:bg-villalen-50/50;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Pantalla de carga (app/page-loader.tsx) — copia de la de villalen.es
+   (repositorio web-villalen, css/style.css "Page loader"), con sus colores
+   y fuentes de marca: verde monte, hueso, ámbar sidra, Fraunces y Jost.
+   ───────────────────────────────────────────────────────────────────────── */
+html.is-loading {
+  overflow: hidden;
+}
+
+#page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: #3f4a34;
+  transform: translateY(0);
+  transition: transform 0.85s cubic-bezier(0.65, 0, 0.35, 1);
+  will-change: transform;
+}
+
+/* Fase 2: la pantalla sube como una puerta de garaje, revelando la página de abajo a arriba */
+#page-loader.page-loader--sliding {
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+.page-loader__eyebrow {
+  margin: 0;
+  color: rgba(239, 236, 229, 0.75);
+  font-family: "Jost", sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  transition: opacity 0.3s ease;
+}
+
+.page-loader__brand {
+  margin: 0;
+  color: #efece5;
+  font-family: "Fraunces", serif;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  transition: opacity 0.3s ease;
+}
+
+.page-loader--closing .page-loader__eyebrow,
+.page-loader--closing .page-loader__brand {
+  opacity: 0;
+}
+
+.page-loader__mark {
+  position: relative;
+  width: 220px;
+  height: 220px;
+}
+
+.page-loader__spinner,
+.page-loader__mascot {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.page-loader__spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(239, 236, 229, 0.25);
+  border-top-color: #c08b57;
+  border-radius: 50%;
+  animation: page-loader-spin 0.85s linear infinite;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Fase 1: el redondel de carga se desvanece y da paso a la mascota */
+.page-loader--closing .page-loader__spinner {
+  opacity: 0;
+  transform: scale(0.6);
+  animation-play-state: paused;
+}
+
+.page-loader__mascot {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  opacity: 0;
+  transform: scale(0.55) rotate(-10deg);
+  transition: opacity 0.4s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.page-loader--closing .page-loader__mascot {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+@media (max-width: 480px) {
+  .page-loader__mark,
+  .page-loader__mascot {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+@keyframes page-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #page-loader {
+    transition: none;
+  }
+
+  .page-loader__spinner {
+    animation: none;
+    opacity: 0.85;
+  }
+
+  .page-loader__mascot {
+    transition: none;
   }
 }
