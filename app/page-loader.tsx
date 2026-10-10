@@ -60,6 +60,10 @@ export default function PageLoader() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="page-loader__mascot" src="/images/loader-dog.png" alt="" aria-hidden="true" />
         </div>
+        {/* Firma del autor, igual que en la pantalla de carga de Gym-Web-Administration. */}
+        <p className="page-loader__credit">
+          by <span>crisvb7</span>
+        </p>
       </div>
       <script dangerouslySetInnerHTML={{ __html: LOADER_SCRIPT }} />
     </>

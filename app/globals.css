@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono&family=Fraunces:opsz,wght@9..144,500&family=Jost:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono&family=Fraunces:opsz,wght@9..144,500&family=Jost:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -176,8 +176,27 @@ html.is-loading {
   transition: opacity 0.3s ease;
 }
 
+/* Firma "by crisvb7" abajo, como en Gym-Web-Administration. */
+.page-loader__credit {
+  position: absolute;
+  bottom: 32px;
+  margin: 0;
+  color: rgba(239, 236, 229, 0.4);
+  font-family: "Jost", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  transition: opacity 0.3s ease;
+}
+
+.page-loader__credit span {
+  color: rgba(239, 236, 229, 0.6);
+  font-weight: 600;
+}
+
 .page-loader--closing .page-loader__eyebrow,
-.page-loader--closing .page-loader__brand {
+.page-loader--closing .page-loader__brand,
+.page-loader--closing .page-loader__credit {
   opacity: 0;
 }
 
