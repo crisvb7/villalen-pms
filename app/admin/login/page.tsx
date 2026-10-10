@@ -29,7 +29,7 @@ function LoginForm() {
       });
 
       if (res?.error) {
-        setError("Email o contraseña incorrectos.");
+        setError("Correo/usuario o contraseña incorrectos.");
         return;
       }
 
@@ -75,11 +75,14 @@ function LoginForm() {
           <form onSubmit={handleSubmit}>
             <div className="mb-5">
               <label className="label mb-2" htmlFor="email">
-                Email
+                Correo o usuario
               </label>
               <input
                 id="email"
-                type="email"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 className="input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

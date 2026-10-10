@@ -10,8 +10,6 @@ import type {
   Booking,
   BookingStatus,
   BookingTraveler,
-  CashMovementType,
-  CashSession,
   CleaningRoom,
   Expense,
   GuestMessageItem,
@@ -225,40 +223,6 @@ export async function setRoomClean(id: string, isClean: boolean) {
   return request<{ data: Room }>("/api/rooms/cleaning", {
     method: "PATCH",
     body: JSON.stringify({ id, isClean }),
-  });
-}
-
-// ── Caja ─────────────────────────────────────────────────────────────────
-
-export async function fetchOpenCashSession() {
-  return request<{ data: CashSession | null }>("/api/cash-sessions?open=true");
-}
-
-export async function fetchCashSessions() {
-  return request<{ data: CashSession[] }>("/api/cash-sessions");
-}
-
-export async function openCashSession(openingBalance: number, notes?: string) {
-  return request<{ data: CashSession }>("/api/cash-sessions", {
-    method: "POST",
-    body: JSON.stringify({ openingBalance, notes }),
-  });
-}
-
-export async function addCashMovement(
-  sessionId: string,
-  input: { type: CashMovementType; concept: string; amount: number }
-) {
-  return request<{ data: CashSession["movements"][number] }>(
-    `/api/cash-sessions/${sessionId}/movements`,
-    { method: "POST", body: JSON.stringify(input) }
-  );
-}
-
-export async function closeCashSession(sessionId: string, closingBalance: number) {
-  return request<{ data: CashSession }>(`/api/cash-sessions/${sessionId}/close`, {
-    method: "POST",
-    body: JSON.stringify({ closingBalance }),
   });
 }
 

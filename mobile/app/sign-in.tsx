@@ -89,16 +89,16 @@ export default function SignInScreen() {
           </View>
 
           <BlurView intensity={40} tint="dark" style={styles.card}>
-            <Text style={styles.fieldLabel}>Correo electrónico</Text>
+            <Text style={styles.fieldLabel}>Correo o usuario</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="mail-outline" size={18} color="rgba(255,255,255,0.7)" />
+              <Ionicons name="person-outline" size={18} color="rgba(255,255,255,0.7)" />
               <TextInput
                 style={styles.input}
-                placeholder="tu@villalen.es"
+                placeholder="tu@villalen.es o usuario"
                 placeholderTextColor="rgba(255,255,255,0.5)"
                 autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
+                autoComplete="username"
+                autoCorrect={false}
                 value={email}
                 onChangeText={setEmail}
               />

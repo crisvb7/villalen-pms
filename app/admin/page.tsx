@@ -3,6 +3,8 @@ import { getAllBookings } from "@/lib/services/booking.service";
 import { getCleaningStatus } from "@/lib/services/room.service";
 import { formatDate, formatCurrency, STATUS_LABELS, STATUS_COLORS, getRoomDisplayName } from "@/lib/utils";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { requireAuth } from "@/lib/auth";
 import { ArrowUpRight, BellRing, AlertCircle, Sparkles } from "lucide-react";
 import HeroCarousel from "./_components/hero-carousel";
 import CleaningSwitches from "./_components/cleaning-switches";
@@ -13,6 +15,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const CHART_DAYS = 14;
 
 export default async function AdminDashboard() {
+  // El middleware solo valida el token; aquí se comprueba además que la
+  // cuenta siga existiendo, porque esta página lee los datos directamente.
+  if (!(await requireAuth())) redirect("/admin/login");
+
   const [bookings, rooms] = await Promise.all([
     getAllBookings(),
     getCleaningStatus(),

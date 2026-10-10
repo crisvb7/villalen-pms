@@ -243,7 +243,7 @@ async function main() {
   await prisma.user.upsert({
     where: { email: DEV_ADMIN_EMAIL },
     update: { passwordHash },
-    create: { email: DEV_ADMIN_EMAIL, passwordHash, name: "Admin" },
+    create: { email: DEV_ADMIN_EMAIL, passwordHash, name: "Admin", role: "SUPERADMIN" },
   });
   console.log("👤 Usuario de desarrollo para /admin/login:");
   console.log(`   Email:      ${DEV_ADMIN_EMAIL}`);

@@ -121,34 +121,6 @@ export interface MobileUser {
   name: string;
 }
 
-// ── Caja ─────────────────────────────────────────────────────────────────
-
-export type CashMovementType = "INCOME" | "EXPENSE";
-export type CashSessionStatus = "OPEN" | "CLOSED";
-
-export interface CashMovement {
-  id: string;
-  cashSessionId: string;
-  type: CashMovementType;
-  concept: string;
-  amount: string;
-  createdAt: string;
-}
-
-export interface CashSession {
-  id: string;
-  date: string;
-  openingBalance: string;
-  closingBalance: string | null;
-  expectedBalance: string | null;
-  difference: string | null;
-  status: CashSessionStatus;
-  notes: string | null;
-  openedAt: string;
-  closedAt: string | null;
-  movements: CashMovement[];
-}
-
 // ── Gastos ───────────────────────────────────────────────────────────────
 
 export type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "OTHER";

@@ -28,13 +28,16 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
+  // Crea (o restablece) siempre un SUPERADMIN: es la vía para recuperar el
+  // acceso total si hiciera falta. Los usuarios normales se crean desde
+  // /admin/usuarios.
   const user = await prisma.user.upsert({
-    where: { email },
-    update: { passwordHash, name },
-    create: { email, passwordHash, name },
+    where: { email: email.toLowerCase() },
+    update: { passwordHash, name, role: "SUPERADMIN" },
+    create: { email: email.toLowerCase(), passwordHash, name, role: "SUPERADMIN" },
   });
 
-  console.log(`✅ Usuario "${user.email}" listo para iniciar sesión en /admin/login.`);
+  console.log(`✅ Superadministrador "${user.email}" listo para iniciar sesión en /admin/login.`);
 }
 
 main()

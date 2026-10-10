@@ -45,16 +45,6 @@ export default function AppTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="caja"
-        options={{
-          title: "Caja",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cash-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="mas"
         options={{
           title: "Más",

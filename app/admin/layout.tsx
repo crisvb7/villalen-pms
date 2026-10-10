@@ -21,7 +21,7 @@ import {
   Receipt,
   Sparkles,
   Users,
-  Wallet,
+  UserCog,
   Banknote,
   type LucideIcon,
 } from "lucide-react";
@@ -35,7 +35,13 @@ interface PendingAssignmentBooking {
   guest: { firstName: string; lastName: string };
 }
 
-const navItems: { href: string; label: string; icon: LucideIcon; exact?: boolean }[] = [
+const navItems: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  superadminOnly?: boolean;
+}[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/estadisticas", label: "Estadísticas", icon: BarChart3 },
   { href: "/admin/calendario", label: "Calendario", icon: CalendarDays },
@@ -44,11 +50,11 @@ const navItems: { href: string; label: string; icon: LucideIcon; exact?: boolean
   { href: "/admin/presupuestos", label: "Facturas proforma", icon: FileText },
   { href: "/admin/facturas", label: "Facturas", icon: Receipt },
   { href: "/admin/gastos", label: "Gastos", icon: Banknote },
-  { href: "/admin/caja", label: "Caja", icon: Wallet },
   { href: "/admin/huespedes", label: "Huéspedes", icon: Users },
   { href: "/admin/habitaciones", label: "Habitaciones", icon: BedDouble },
   { href: "/admin/limpieza", label: "Limpieza", icon: Sparkles },
   { href: "/admin/rutas", label: "Rutas", icon: Footprints },
+  { href: "/admin/usuarios", label: "Usuarios", icon: UserCog, superadminOnly: true },
 ];
 
 // Alto de cada icono (40px) + separación (2px) — mueve el indicador activo.
@@ -90,8 +96,15 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (pathname === "/admin/login") return;
     fetch("/api/bookings/pending-assignment")
-      .then((r) => r.json())
-      .then((data) => setPendingBookings(data.data ?? []))
+      .then((r) => {
+        // 401 con sesión abierta: la cuenta se eliminó desde /admin/usuarios.
+        if (r.status === 401) {
+          signOut({ callbackUrl: "/admin/login" });
+          return null;
+        }
+        return r.json();
+      })
+      .then((data) => data && setPendingBookings(data.data ?? []))
       .catch(() => {});
   }, [pathname, searchParams]);
 
@@ -124,7 +137,12 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
   }
 
   const currentPath = pendingHref ?? pathname;
-  const activeIndex = navItems.findIndex((item) =>
+  // "Usuarios" solo aparece para el SUPERADMIN (la página y la API lo
+  // comprueban también por su cuenta).
+  const visibleNavItems = navItems.filter(
+    (item) => !item.superadminOnly || session?.user?.role === "SUPERADMIN"
+  );
+  const activeIndex = visibleNavItems.findIndex((item) =>
     item.exact ? currentPath === item.href : currentPath.startsWith(item.href)
   );
   const userName = session?.user?.name ?? "";
@@ -132,7 +150,7 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
   const initial = (userName || session?.user?.email || "V").charAt(0).toUpperCase();
 
   return (
-    <div className="pms-shell h-screen overflow-hidden">
+    <div className="pms-shell pms-glass h-screen overflow-hidden">
       <div className="glass-bg" aria-hidden />
 
       <div className="glass-frame">
@@ -230,7 +248,9 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
                   {session?.user?.email && (
                     <p className="text-xs text-white/50 truncate">{session.user.email}</p>
                   )}
-                  <span className="glass-chip mt-2">Staff · Admin</span>
+                  <span className="glass-chip mt-2">
+                    {session?.user?.role === "SUPERADMIN" ? "Superadministrador" : "Administrador"}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -274,7 +294,7 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
                   opacity: activeIndex === -1 ? 0 : 1,
                 }}
               />
-              {navItems.map((item, index) => {
+              {visibleNavItems.map((item, index) => {
                 const Icon = item.icon;
                 const isActive = index === activeIndex;
                 const showBadge = item.href === "/admin/reservas" && pendingBookings.length > 0;

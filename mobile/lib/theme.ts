@@ -10,7 +10,7 @@ export const colors = {
   text: "#1F2421",
   textMuted: "#6B7268",
   // Verde bosque: "primary" para botones/estados activos, "primaryDark"
-  // para las cabeceras/hero grandes (login, tarjeta de caja).
+  // para las cabeceras/hero grandes (login).
   primary: "#2E5C43",
   primaryDark: "#1E3D2E",
   primaryText: "#FFFFFF",

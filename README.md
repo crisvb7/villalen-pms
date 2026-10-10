@@ -94,10 +94,14 @@ La aplicación estará disponible en **http://localhost:3000**
 | `/admin/presupuestos` | Facturas proforma y conversión a reserva |
 | `/admin/facturas` | Facturación |
 | `/admin/gastos` | Libro de gastos |
-| `/admin/caja` | Arqueo de caja |
 | `/admin/huespedes` | Registro de huéspedes |
 | `/admin/habitaciones` | Gestión del inventario de habitaciones |
 | `/admin/limpieza` | Estado de limpieza de habitaciones |
+| `/admin/usuarios` | Gestión de usuarios (solo superadministrador) |
+
+> El control de caja (arqueo y turnos) se retiró en octubre de 2026. Sus tablas
+> (`cash_sessions`, `cash_movements`) siguen en la base de datos con lo que se
+> hubiera registrado, pero ya no hay pantallas ni API que las usen.
 
 ---
 
@@ -142,6 +146,15 @@ La aplicación estará disponible en **http://localhost:3000**
 | `GET` | `/api/invoices/:id` | Detalle de factura |
 | `PATCH` | `/api/invoices/:id` | Marcar como pagada `{isPaid: true}` |
 
+### Usuarios (solo superadministrador)
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/api/users` | Listar cuentas |
+| `POST` | `/api/users` | Crear cuenta de administrador `{name, login, password}` |
+| `PATCH` | `/api/users/:id` | Cambiar contraseña `{password}` |
+| `DELETE` | `/api/users/:id` | Eliminar cuenta |
+
 ### Webhooks
 
 | Método | Endpoint | Descripción |
@@ -154,17 +167,25 @@ La aplicación estará disponible en **http://localhost:3000**
 ## 🔐 Autenticación del backoffice
 
 Todo `/admin` (y las rutas de API que no usa el motor de reservas público) requieren
-sesión. Login con email + contraseña (NextAuth, `middleware.ts` protege las rutas).
+sesión. Login con **correo o nombre de usuario** + contraseña (NextAuth,
+`middleware.ts` protege las rutas), igual en la web y en la app móvil.
 
-1. Crea el primer usuario:
+Hay dos roles:
+- **Superadministrador**: acceso completo y, además, la sección `/admin/usuarios`.
+- **Administrador**: acceso completo a todo lo demás (p. ej. los dueños del hotel).
+
+1. Crea el primer usuario (siempre superadministrador):
    ```bash
    ADMIN_EMAIL="tu@email.com" ADMIN_PASSWORD="contraseña_larga" npm run create-admin
    ```
    Es seguro volver a ejecutarlo (actualiza la contraseña si el email ya existe) y no
-   toca reservas/huéspedes/habitaciones — puedes usarlo también en producción.
-2. En desarrollo, `npm run db:seed` también crea un usuario de prueba
+   toca reservas/huéspedes/habitaciones — puedes usarlo también en producción, por
+   ejemplo para recuperar el acceso.
+2. Desde `/admin/usuarios` el superadministrador crea las cuentas de administrador
+   (con correo o con nombre de usuario), les cambia la contraseña o las elimina.
+3. En desarrollo, `npm run db:seed` también crea un usuario de prueba
    (`admin@casadosouto.es`, contraseña impresa por consola) — no usar en producción.
-3. Inicia sesión en `/admin/login`.
+4. Inicia sesión en `/admin/login`.
 
 ## 💳 TPV Virtual (Redsys / Caja Rural) — pendiente de alta
 

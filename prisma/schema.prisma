@@ -474,14 +474,25 @@ enum QuoteStatus {
 // ─── USUARIOS (backoffice) ─────────────────────────────────────────────────────
 model User {
   id           String   @id @default(cuid())
-  email        String   @unique
+  // Se entra con correo O con nombre de usuario (al menos uno de los dos).
+  // Se guardan siempre en minúsculas.
+  email        String?  @unique
+  username     String?  @unique
   passwordHash String
   name         String
+  role         UserRole @default(ADMIN)
   createdAt    DateTime @default(now())
 
   pushTokens StaffPushToken[]
 
   @@map("users")
+}
+
+// SUPERADMIN: acceso completo + gestión de usuarios (/admin/usuarios).
+// ADMIN: acceso completo a todo lo demás (p. ej. los dueños del hotel).
+enum UserRole {
+  SUPERADMIN
+  ADMIN
 }
 
 // Ajustes globales del hotel — una sola fila ("singleton"). De momento solo
